@@ -1,0 +1,1 @@
+{ "name": "fixture-functions", "dependencies": { "firebase-functions": "^7.0.0" } }
