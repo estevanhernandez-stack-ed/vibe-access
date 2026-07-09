@@ -19,10 +19,11 @@ export function buildManifest(inventory, { previous = null, baseUrls, now } = {}
 
   const affordances = inventory.routes.map((route) => {
     const id = kebab(route.name);
-    const kind = route.method === 'GET' ? 'read' : 'act';
     const prev = prevById.get(id);
+    const isScaffolded = prev?.origin === 'scaffolded';
+    const kind = isScaffolded ? prev.kind : (route.method === 'GET' ? 'read' : 'act');
     const overrides = prev?.overrides;
-    const tier = overrides?.tier ?? 'prod-safe';
+    const tier = overrides?.tier ?? (isScaffolded ? prev.tier : 'prod-safe');
     assertTierLegal(kind, tier);
     return {
       id,
@@ -44,8 +45,9 @@ export function buildManifest(inventory, { previous = null, baseUrls, now } = {}
   // may not appear in a rewrites-only inventory until applied + rescanned)
   for (const prev of previous?.affordances ?? []) {
     if (prev.origin === 'scaffolded' && !affordances.some((a) => a.id === prev.id)) {
-      assertTierLegal(prev.kind, prev.tier);
-      affordances.push(prev);
+      const effectiveTier = prev.overrides?.tier ?? prev.tier;
+      assertTierLegal(prev.kind, effectiveTier);
+      affordances.push({ ...prev, tier: effectiveTier });
     }
   }
 
