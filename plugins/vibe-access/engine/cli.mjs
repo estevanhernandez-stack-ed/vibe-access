@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
 import { detect } from './detect.mjs';
 import { scan, writeScanArtifacts } from './scan.mjs';
+import { buildManifest, writeManifest } from './map.mjs';
 
 function parseArgs(argv) {
   const [cmd, ...rest] = argv;
@@ -42,7 +44,20 @@ const COMMANDS = {
       )
     );
   },
-  // map (Task 8), gaps (Task 9), verify + stamp (Task 11) extend this table.
+  map() {
+    const invPath = join(appRoot, '.vibe-access', 'state', 'inventory.json');
+    if (!existsSync(invPath)) throw new Error('no inventory — run scan first');
+    const inventory = JSON.parse(readFileSync(invPath, 'utf8'));
+    const manifestPath = join(appRoot, 'agent-access.json');
+    const previous = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : null;
+    const configPath = join(appRoot, '.vibe-access', 'config.json');
+    const config = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf8')) : null;
+    const baseUrls = config?.baseUrls ?? { dev: flags['base-url'] ?? 'http://localhost:5000' };
+    const manifest = buildManifest(inventory, { previous, baseUrls });
+    const path = writeManifest(appRoot, manifest);
+    console.log(JSON.stringify({ affordances: manifest.affordances.length, path }, null, 2));
+  },
+  // gaps (Task 9), verify + stamp (Task 11) extend this table.
 };
 
 const handler = COMMANDS[cmd];
