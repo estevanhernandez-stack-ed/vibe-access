@@ -214,6 +214,38 @@ module.exports = { submitScore };
     expect(body).toContain('req.method !== "POST"');
   });
 
+  test('extractFunctionBody handles the options-object-on-its-own-line wrapper form (the real WeSeeYou truncation bug)', () => {
+    // Verbatim shape from functions/src/social/profiles.js:211-213 in the real
+    // target app (task-15-phase1e-report.md): the options object sits on its
+    // own line, between the wrapper call's still-open paren and the callback.
+    // That line nets zero braces ({+1,-1}) while still containing a literal
+    // '}', which is exactly what the old brace-only, net-per-line termination
+    // rule (`braceCount === 0 && line.includes('}')`) broke on — it
+    // terminated extraction after 2 lines, before the auth call or the
+    // req.method guard were ever seen, for all 84 handlers in the app that
+    // use this idiom.
+    const source = `const {onRequest} = require("firebase-functions/v2/https");
+const {verifyAuthToken} = require("../utils/helpers");
+const {ALLOWED_ORIGINS} = require("../utils/middleware");
+
+const submitScore = onRequest(
+    {cors: ALLOWED_ORIGINS},
+    async (req, res) => {
+      if (req.method !== "POST") {
+        return res.status(405).json({error: "Method not allowed"});
+      }
+      const user = await verifyAuthToken(req);
+      res.json({user});
+    },
+);
+
+module.exports = {submitScore};
+`;
+    const body = extractFunctionBody('submitScore', source);
+    expect(body).toContain('verifyAuthToken');
+    expect(body).toContain('req.method !== "POST"');
+  });
+
   test('const-declaration wrapper-call form does not collide with a longer name sharing the prefix', () => {
     // Guards the \b anchor: `const submitScore =` must not match when hunting
     // for `submitScoreHelper`, and vice versa.

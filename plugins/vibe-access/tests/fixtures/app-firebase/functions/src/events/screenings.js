@@ -24,14 +24,21 @@ const screeningDetails = onRequest({ cors: true }, async (req, res) => {
 
 // bookScreening: wrapper-call form calling verifyAuthToken — the real-world
 // idiom that e3d4609's fixture never exercised (const name = onRequest(...)
-// rather than a bare function/arrow expression).
-const bookScreening = onRequest({ cors: true }, async (req, res) => {
-  const user = await verifyAuthToken(req);
-  if (req.method !== "POST") {
-    res.status(405).send("nope");
-    return;
-  }
-  res.json({ user });
-});
+// rather than a bare function/arrow expression). Reformatted to the
+// options-object-on-its-own-line shape (task-15-phase1e-report.md, the real
+// WeSeeYou functions/src/social/profiles.js:211-213 pattern): the options
+// object nets zero braces on its own line, which is exactly what broke the
+// old brace-only, net-per-line termination rule.
+const bookScreening = onRequest(
+  { cors: true },
+  async (req, res) => {
+    const user = await verifyAuthToken(req);
+    if (req.method !== "POST") {
+      res.status(405).send("nope");
+      return;
+    }
+    res.json({ user });
+  },
+);
 
 module.exports = { screeningsFeed, screeningDetails, bookScreening };

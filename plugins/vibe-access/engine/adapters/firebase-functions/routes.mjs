@@ -119,6 +119,20 @@ function buildNameCandidates(name) {
   ];
 }
 
+// Advances the running (parens + braces) depth by one character at a time
+// and latches `seenOpen` once depth has gone positive at least once. Counting
+// per character (rather than net-per-line) is what lets a line like
+// `{cors: ALLOWED_ORIGINS},` — which nets to zero braces on its own but sits
+// between an unclosed wrapper-call paren and the callback body — carry the
+// outstanding depth through instead of falsely reading as "back to zero."
+function advanceDepth(line, state) {
+  for (const ch of line) {
+    if (ch === '(' || ch === '{') state.depth++;
+    else if (ch === ')' || ch === '}') state.depth--;
+    if (state.depth > 0) state.seenOpen = true;
+  }
+}
+
 export function extractFunctionBody(exportName, source) {
   const resolvedName = resolveExportAlias(exportName, source);
   const lines = source.split('\n');
@@ -126,8 +140,8 @@ export function extractFunctionBody(exportName, source) {
   for (const exportRe of buildNameCandidates(resolvedName)) {
     let inFunction = false;
     let functionCode = '';
-    let braceCount = 0;
     let matched = false;
+    const state = { depth: 0, seenOpen: false };
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -136,22 +150,36 @@ export function extractFunctionBody(exportName, source) {
         matched = true;
         inFunction = true;
         functionCode = line;
-        braceCount = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+        state.depth = 0;
+        state.seenOpen = false;
+        advanceDepth(line, state);
 
-        // One-liner export (net-zero braces on the match line itself): the
-        // statement is fully contained here. Without this check, a one-liner
-        // that isn't the last export in the file bleeds into whatever export
-        // follows it, inheriting its method guards.
         const trimmed = line.trim();
-        const isArrowExpressionBody = /=>/.test(trimmed) && !trimmed.endsWith('{');
-        if (braceCount === 0 && (trimmed.endsWith(';') || isArrowExpressionBody)) {
+        // The match line never opened a paren or brace at all (e.g. a plain
+        // re-export like `exports.a = b.c;`) — there's nothing for the
+        // depth-based rule below to ever close, so terminate here directly.
+        // Preserves the pre-existing single-line re-export behavior.
+        if (!state.seenOpen && trimmed.endsWith(';')) {
+          break;
+        }
+
+        // Everything the match line opened (call parens, arrow params,
+        // object-literal braces, an arrow's own `{ ... }` body) closed again
+        // by the end of the same line — a true one-liner. Without this, a
+        // one-liner that isn't the last export in the file would bleed into
+        // whatever export follows it, inheriting its method guards.
+        if (state.seenOpen && state.depth === 0) {
           break;
         }
       } else if (inFunction) {
         functionCode += '\n' + line;
-        braceCount += (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+        advanceDepth(line, state);
 
-        if (braceCount === 0 && line.includes('}')) {
+        // Depth returned to zero after having gone positive at some point
+        // since the match line: every paren/brace opened from the match
+        // line onward (wrapper-call args, options-object lines, the
+        // callback body) is now closed. Terminate inclusive of this line.
+        if (state.seenOpen && state.depth === 0) {
           break;
         }
       }
