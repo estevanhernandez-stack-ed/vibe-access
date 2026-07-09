@@ -298,6 +298,7 @@ export function detectRoutes(ctx) {
       path: rw.source,
       sourceRef: handlerSourcePath ? relative(appRoot, handlerSourcePath) : indexRef,
       handlerSourcePath,
+      sourceExportName,
     });
   }
 

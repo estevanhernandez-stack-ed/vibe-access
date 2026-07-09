@@ -2,7 +2,7 @@ import { describe, test, expect } from '@jest/globals';
 import { fileURLToPath } from 'node:url';
 import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { cpSync } from 'node:fs';
 import { detect } from '../engine/detect.mjs';
 import { firebaseFunctionsAdapter } from '../engine/adapters/firebase-functions/index.mjs';
@@ -31,6 +31,30 @@ describe('firebase-functions scaffoldAffordance', () => {
       ctx
     );
     expect(plan.files[0].contents).toContain('agent-access.json');
+  });
+
+  test('discovery template resolves the manifest path to the app root, not functions/src', () => {
+    const plan = firebaseFunctionsAdapter.scaffoldAffordance(
+      { id: 'agent-manifest', kind: 'discovery', description: 'Discovery route.' },
+      ctx
+    );
+    const filePath = plan.files[0].path;
+    expect(filePath).toMatch(/functions[\\/]src[\\/]agent-access[\\/]agent-manifest\.js$/);
+
+    // Pull the exact join(__dirname, ...) call the template runs at load time,
+    // rather than just asserting the string 'agent-access.json' appears somewhere.
+    const joinCall = plan.files[0].contents.match(/join\(__dirname,\s*([^)]+)\)/);
+    expect(joinCall).not.toBeNull();
+    const args = joinCall[1].split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''));
+    const manifestFileName = args[args.length - 1];
+    const upSegments = args.slice(0, -1);
+
+    // The generated file lives at <appRoot>/functions/src/agent-access/agent-manifest.js —
+    // its __dirname at runtime is <appRoot>/functions/src/agent-access.
+    const generatedFileDir = join(ctx.appRoot, dirname(filePath));
+    const resolvedManifestPath = join(generatedFileDir, ...upSegments, manifestFileName);
+
+    expect(resolvedManifestPath).toBe(join(ctx.appRoot, 'agent-access.json'));
   });
 });
 

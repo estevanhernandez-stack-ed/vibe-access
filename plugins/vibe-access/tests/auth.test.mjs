@@ -71,6 +71,20 @@ describe('firebase-functions detectAuth', () => {
     expect(firebaseFunctionsAdapter.detectAuth(r, ctx)).toBe('none');
   });
 
+  test('index-level renamed export (exports.foo = mod.bar) -> token, not a false negative on the wrong name', () => {
+    // renamedProfileCheck is index.js's export name; profiles.js declares the
+    // handler as updateProfile and never as renamedProfileCheck. Before the
+    // fix, detectAuth searched profiles.js for a `renamedProfileCheck`
+    // declaration (route.name), found nothing, and silently degraded to
+    // 'none' even though updateProfile calls auth.verifyIdToken(). Fixed by
+    // preferring route.sourceExportName (the name the handler file actually
+    // declares) over route.name (the index-level export name).
+    const r = routes.find((x) => x.name === 'renamedProfileCheck');
+    expect(r).toBeDefined();
+    expect(r.sourceExportName).toBe('updateProfile');
+    expect(firebaseFunctionsAdapter.detectAuth(r, ctx)).toBe('token');
+  });
+
   test('nested barrel directory (dir/index.js re-exports from a sibling file) -> token, not a false negative', () => {
     // The generate-anagrams-batch false negative from task-15-phase1f-report.md:
     // functions/index.js requires the directory "./src/moderation", which

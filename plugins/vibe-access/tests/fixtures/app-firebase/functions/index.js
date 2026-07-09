@@ -19,6 +19,11 @@ exports.getProfile = profilesModule.getProfile;
 exports.updateProfile = profilesModule.updateProfile;
 exports.publicFeed = profilesModule.publicFeed;
 exports.feedAlias = profilesModule.feedAlias;
+// Index-level rename: the handler file declares updateProfile, but this app
+// exposes it under a different name at the index barrel. sourceExportName
+// (updateProfile) must be what auth detection reads the handler file with,
+// not route.name (renamedProfileCheck) — see auth.test.mjs.
+exports.renamedProfileCheck = profilesModule.updateProfile;
 
 const screeningsModule = require('./src/events/screenings');
 exports.screeningsFeed = screeningsModule.screeningsFeed;

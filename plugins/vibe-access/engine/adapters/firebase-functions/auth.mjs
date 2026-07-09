@@ -11,6 +11,6 @@ export function detectAuth(route) {
   } catch {
     return 'none';
   }
-  const handlerBody = extractFunctionBody(route.name, source);
+  const handlerBody = extractFunctionBody(route.sourceExportName ?? route.name, source);
   return TOKEN_CALL_RE.test(handlerBody) ? 'token' : 'none';
 }

@@ -102,7 +102,7 @@ real adapter.
 
 ## Validated against
 
-WeSeeYouAtTheMovies. Dogfood run pending as of this commit.
+WeSeeYouAtTheMovies. 84 routes scanned, 85 affordances, verify 76/85 (all 9 fails classified: an app-side bug family plus two named v0.2 gaps). The run surfaced 7 plugin bugs, all fixed same session with regression tests. Full record: `docs/dogfood/M-weseeyou-2026-07-09.md`.
 
 ## License
 

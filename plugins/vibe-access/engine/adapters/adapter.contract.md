@@ -11,7 +11,7 @@ Every framework adapter exports an object satisfying:
       gateMechanism(): { kind: string; description: string };
     }
 
-    RouteEntry     = { name, method, path, sourceRef, handlerSourcePath|null }
+    RouteEntry     = { name, method, path, sourceRef, handlerSourcePath|null, sourceExportName }
     UnmappedEntry  = { sourceRef, reason }
     ctx            = { appRoot, detection, config }   // config may be null pre-bootstrap
     spec           = { id, kind: 'seed'|'reset'|'read-state'|'capture'|'discovery', description }

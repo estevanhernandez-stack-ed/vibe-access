@@ -9,7 +9,7 @@ describe('detect', () => {
     const d = detect(fix('app-firebase'));
     expect(d.framework).toBe('firebase-functions');
     expect(d.functionsDir).toMatch(/functions$/);
-    expect(d.rewrites).toHaveLength(20);
+    expect(d.rewrites).toHaveLength(21);
   });
 
   test('packageJsons has no case-insensitive duplicate paths', () => {
