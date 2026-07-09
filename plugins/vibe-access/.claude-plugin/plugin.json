@@ -1,0 +1,16 @@
+{
+  "name": "vibe-access",
+  "version": "0.1.0",
+  "description": "Give agents pipelines into your app. Scans your routes and auth model, maps every callable surface into a schema-versioned agent-access.json manifest with dev and prod-safe tiers, scaffolds the affordances your app is missing (seed, reset, read-state, capture, discovery) behind hard env gates, and proves the layer with a cold-agent verify that exercises every affordance before anything counts as done. seed/reset/capture can never be tagged prod-safe — a refusal, not a warning. Deep on Firebase Cloud Functions (hosting-rewrite route detection, ID-token auth mapping), with a real adapter seam that reports an honest not-yet-implemented for the rest. The manifest is the embryo of your eventual MCP server. Validated against WeSeeYouAtTheMovies.",
+  "author": {
+    "name": "626Labs LLC",
+    "url": "https://github.com/estevanhernandez-stack-ed/vibe-access"
+  },
+  "homepage": "https://github.com/estevanhernandez-stack-ed/vibe-access#readme",
+  "repository": "https://github.com/estevanhernandez-stack-ed/vibe-access",
+  "license": "MIT",
+  "keywords": [
+    "vibe-access", "vibe-coding", "agent-access", "mcp", "agent-native",
+    "firebase-functions", "claude-code-plugin", "626labs"
+  ]
+}
