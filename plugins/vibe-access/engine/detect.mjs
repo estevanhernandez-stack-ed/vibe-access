@@ -11,9 +11,20 @@ function readJsonSafe(path) {
 
 function collectPackageJsons(appRoot) {
   const candidates = ['', 'frontend', 'functions', 'Backend', 'backend', 'web', 'app'];
-  return candidates
-    .map((d) => join(appRoot, d, 'package.json'))
-    .filter((p) => existsSync(p));
+  const seen = new Set();
+  const result = [];
+  for (const d of candidates) {
+    const p = join(appRoot, d, 'package.json');
+    if (!existsSync(p)) continue;
+    // On case-insensitive filesystems (Windows/macOS default), 'Backend' and
+    // 'backend' can resolve to the same file — dedupe by lowercased path so
+    // callers never see the same package.json twice.
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(p);
+  }
+  return result;
 }
 
 function depsOf(pkgPath) {

@@ -53,4 +53,35 @@ describe('firebase-functions detectRoutes', () => {
   test('the ** catch-all is ignored silently (SPA fallback, not an API)', () => {
     expect(routes.some((r) => r.path === '**')).toBe(false);
   });
+
+  test('two-statement export form (const mod = require(...); exports.x = mod.x) produces routes, not unmapped', () => {
+    const quizData = routes.find((r) => r.name === 'getQuizData');
+    const saveQuiz = routes.find((r) => r.name === 'saveQuiz');
+    expect(quizData).toBeDefined();
+    expect(saveQuiz).toBeDefined();
+    expect(unmapped.some((u) => u.reason.includes('getQuizData'))).toBe(false);
+    expect(unmapped.some((u) => u.reason.includes('saveQuiz'))).toBe(false);
+  });
+
+  test('two-statement export: method inferred from name heuristic AND GET guard', () => {
+    expect(routes.find((r) => r.name === 'getQuizData').method).toBe('GET');
+  });
+
+  test('two-statement export: plain export with no guard/read-name infers POST', () => {
+    expect(routes.find((r) => r.name === 'saveQuiz').method).toBe('POST');
+  });
+
+  test('two-statement export: sourceRef resolves through the binding to the required file', () => {
+    const quizData = routes.find((r) => r.name === 'getQuizData');
+    const saveQuiz = routes.find((r) => r.name === 'saveQuiz');
+    expect(quizData.sourceRef).toMatch(/src[\\/]games[\\/]quiz\.js/);
+    expect(saveQuiz.sourceRef).toMatch(/src[\\/]games[\\/]quiz\.js/);
+  });
+
+  test('mixed file: existing single-line exports still parse alongside the two-statement form (no regression)', () => {
+    const paths = routes.map((r) => r.path);
+    expect(paths).toContain('/api/leaderboard');
+    expect(paths).toContain('/api/submit-score');
+    expect(routes.find((r) => r.name === 'leaderboard').sourceRef).toMatch(/src[\\/]social[\\/]leaderboards\.js/);
+  });
 });

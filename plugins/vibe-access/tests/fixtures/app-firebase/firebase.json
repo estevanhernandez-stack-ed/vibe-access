@@ -8,6 +8,8 @@
       { "source": "/api/echo", "function": "echo" },
       { "source": "/api/echo-back", "function": "echoBack" },
       { "source": "/api/ghost", "function": "ghostFunction" },
+      { "source": "/api/quiz-data", "function": "getQuizData" },
+      { "source": "/api/quiz-save", "function": "saveQuiz" },
       { "source": "**", "destination": "/index.html" }
     ]
   },

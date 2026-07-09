@@ -1,7 +1,12 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const EXPORT_RE = /exports\.(\w+)\s*=\s*require\((['"])(.+?)\2\)(?:\.(\w+))?/g;
+// Single-statement re-export form: exports.foo = require('./path').foo;
+const INLINE_EXPORT_RE = /exports\.(\w+)\s*=\s*require\((['"])(.+?)\2\)(?:\.(\w+))?/g;
+// Two-statement re-export form, module bindings: const mod = require('./path');
+const REQUIRE_BINDING_RE = /(?:const|let|var)\s+(\w+)\s*=\s*require\((['"])(.+?)\2\)/g;
+// Two-statement re-export form, the export line: exports.foo = mod.foo (semicolon optional, ASI).
+const BINDING_EXPORT_RE = /exports\.(\w+)\s*=\s*(\w+)\.(\w+)\s*;?/g;
 const READ_NAME_RE = /^(get|list|my|fetch)|Data$/;
 
 function parseIndexExports(functionsDir) {
@@ -9,15 +14,38 @@ function parseIndexExports(functionsDir) {
   if (!existsSync(indexPath)) return { exportsMap: new Map(), indexPath: null };
   const text = readFileSync(indexPath, 'utf8');
   const exportsMap = new Map();
-  for (const m of text.matchAll(EXPORT_RE)) {
-    const [, indexExportName, , requirePath, sourceExportName] = m;
+
+  const resolveRequirePath = (requirePath) => {
     let resolved = join(functionsDir, requirePath);
     if (!existsSync(resolved) && existsSync(`${resolved}.js`)) resolved = `${resolved}.js`;
+    return existsSync(resolved) ? resolved : null;
+  };
+
+  // Pass 1: single-statement form — exports.foo = require('./path').foo;
+  for (const m of text.matchAll(INLINE_EXPORT_RE)) {
+    const [, indexExportName, , requirePath, sourceExportName] = m;
     exportsMap.set(indexExportName, {
-      filePath: existsSync(resolved) ? resolved : null,
+      filePath: resolveRequirePath(requirePath),
       exportName: sourceExportName || indexExportName,
     });
   }
+
+  // Pass 2: two-statement form — const mod = require('./path'); exports.foo = mod.foo;
+  const bindings = new Map();
+  for (const m of text.matchAll(REQUIRE_BINDING_RE)) {
+    const [, ident, , requirePath] = m;
+    bindings.set(ident, resolveRequirePath(requirePath));
+  }
+  for (const m of text.matchAll(BINDING_EXPORT_RE)) {
+    const [, indexExportName, ident, sourceExportName] = m;
+    if (exportsMap.has(indexExportName)) continue; // already resolved via the inline form
+    if (!bindings.has(ident)) continue; // `ident` isn't a require() binding — not this pattern
+    exportsMap.set(indexExportName, {
+      filePath: bindings.get(ident),
+      exportName: sourceExportName,
+    });
+  }
+
   return { exportsMap, indexPath };
 }
 

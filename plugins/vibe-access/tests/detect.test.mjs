@@ -9,7 +9,13 @@ describe('detect', () => {
     const d = detect(fix('app-firebase'));
     expect(d.framework).toBe('firebase-functions');
     expect(d.functionsDir).toMatch(/functions$/);
-    expect(d.rewrites).toHaveLength(7);
+    expect(d.rewrites).toHaveLength(9);
+  });
+
+  test('packageJsons has no case-insensitive duplicate paths', () => {
+    const d = detect(fix('app-firebase'));
+    const lower = d.packageJsons.map((p) => p.toLowerCase());
+    expect(new Set(lower).size).toBe(lower.length);
   });
 
   test('recognizes a next.js app from package.json deps', () => {

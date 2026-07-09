@@ -4,3 +4,7 @@ exports.ping = require('./src/social/leaderboards').ping;
 exports.echo = require('./src/social/leaderboards').echo;
 exports.echoBack = require('./src/social/leaderboards').echoBack;
 exports.orphanFunction = require('./src/social/leaderboards').orphanFunction;
+
+const quizModule = require('./src/games/quiz');
+exports.getQuizData = quizModule.getQuizData;
+exports.saveQuiz = quizModule.saveQuiz
