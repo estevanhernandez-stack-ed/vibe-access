@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import { resolve, join } from 'node:path';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { detect } from './detect.mjs';
 import { scan, writeScanArtifacts } from './scan.mjs';
 import { buildManifest, writeManifest } from './map.mjs';
 import { evaluateGaps } from './gaps.mjs';
+import { runVerify, stampManifest } from './verify.mjs';
+import { renderVerifyReport } from './report.mjs';
 
 function parseArgs(argv) {
   const [cmd, ...rest] = argv;
@@ -64,7 +67,35 @@ const COMMANDS = {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     console.log(JSON.stringify(evaluateGaps(manifest), null, 2));
   },
-  // verify + stamp (Task 11) extend this table.
+  async verify() {
+    const manifestPath = join(appRoot, 'agent-access.json');
+    if (!existsSync(manifestPath)) throw new Error('no manifest — run map first');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    const baseUrl = flags['base-url'] ?? manifest.baseUrls.dev;
+    const run = await runVerify(manifest, { baseUrl, force: flags.force === true, runId: randomUUID().slice(0, 8) });
+    const runDir = join(appRoot, '.vibe-access', 'verify');
+    mkdirSync(runDir, { recursive: true });
+    writeFileSync(join(runDir, `run-${run.runId}.json`), JSON.stringify(run, null, 2));
+    const stamped = stampManifest(manifest, run);
+    writeFileSync(manifestPath, JSON.stringify(stamped, null, 2));
+    const docsDir = join(appRoot, 'docs', 'vibe-access');
+    mkdirSync(docsDir, { recursive: true });
+    writeFileSync(join(docsDir, `verify-${run.startedAt.slice(0, 10)}.md`), renderVerifyReport(run, stamped));
+    console.log(JSON.stringify({ runId: run.runId, results: run.results }, null, 2));
+  },
+  stamp() {
+    const [affordanceId, status] = positional;
+    if (!affordanceId || !['pass', 'fail'].includes(status)) {
+      throw new Error('usage: vibe-access stamp <affordanceId> <pass|fail> --run <runId> --app <path>');
+    }
+    const manifestPath = join(appRoot, 'agent-access.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    const a = manifest.affordances.find((x) => x.id === affordanceId);
+    if (!a) throw new Error(`no affordance "${affordanceId}" in manifest`);
+    a.verified = { status, at: new Date().toISOString(), runId: String(flags.run ?? 'manual') };
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    console.log(JSON.stringify({ stamped: affordanceId, status }, null, 2));
+  },
 };
 
 const handler = COMMANDS[cmd];
@@ -73,7 +104,7 @@ if (!handler) {
   process.exit(2);
 }
 try {
-  handler();
+  await handler();
 } catch (err) {
   console.error(err.message);
   process.exit(1);
