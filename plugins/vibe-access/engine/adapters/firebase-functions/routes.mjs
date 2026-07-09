@@ -232,14 +232,27 @@ export function extractFunctionBody(exportName, source) {
   return '';
 }
 
-// Matches both the positive guard (`req.method === 'GET'`) and the
-// reject-others guard (`req.method !== 'GET'` early-returning/405-ing on
-// anything but GET) — both are evidence the route is GET-only. Quote style
-// is app-dependent (single or double), so both are accepted.
-const METHOD_GET_RE = /req\.method\s*(?:===?|!==)\s*["']GET["']/;
+// Matches both the positive guard (`req.method === "<M>"`) and the
+// reject-others guard (`req.method !== "<M>"` early-returning/405-ing on
+// anything but <M>) for any of the transport methods the manifest schema
+// accepts — both shapes are body evidence the route is <M>-only. Quote style
+// is app-dependent (single or double), so both are accepted. Capture group 1
+// carries the method so callers can read it off directly instead of guessing
+// from which literal regex matched.
+const METHOD_GUARD_RE = /req\.method\s*(?:===?|!==)\s*["'](GET|POST|PUT|PATCH|DELETE)["']/;
 
+// Body evidence always beats the NAME heuristic: a handler's own req.method
+// guard is ground truth about what it actually accepts, whereas the name
+// heuristic (READ_NAME_RE) is a guess that false-positives on names like
+// ingestBoxOfficeData / calculateResultsWithRealData — POST-only handlers
+// whose name happens to end in "Data" (task-15-phase2-report.md, the
+// WeSeeYouAtTheMovies dogfood finding). Only fall back to the name heuristic
+// when the body yields no method evidence at all (or there's no body to read).
 function inferMethod(name, handlerSource) {
-  if (handlerSource && METHOD_GET_RE.test(handlerSource)) return 'GET';
+  if (handlerSource) {
+    const match = METHOD_GUARD_RE.exec(handlerSource);
+    if (match) return match[1];
+  }
   if (READ_NAME_RE.test(name)) return 'GET';
   return 'POST';
 }

@@ -160,6 +160,24 @@ describe('firebase-functions detectRoutes', () => {
     );
   });
 
+  test('Data$-suffixed name with a body reject-guard on POST infers POST, not the name-heuristic GET (WeSeeYou dogfood finding)', () => {
+    // ingestBoxOfficeData ends in "Data" — READ_NAME_RE's Data$ suffix would
+    // name-infer GET — but the body explicitly rejects anything but POST.
+    // Body evidence must win: the real handler is POST-only.
+    const r = routes.find((x) => x.name === 'ingestBoxOfficeData');
+    expect(r).toBeDefined();
+    expect(r.method).toBe('POST');
+  });
+
+  test('body positively guarding a non-GET/POST method (PUT) is inferred as that method', () => {
+    // replaceBoxOfficeData also ends in "Data" (name heuristic says GET), but
+    // the body positively guards req.method === 'PUT'. The generalized
+    // per-method check must catch this, not just GET/POST.
+    const r = routes.find((x) => x.name === 'replaceBoxOfficeData');
+    expect(r).toBeDefined();
+    expect(r.method).toBe('PUT');
+  });
+
   describe('wrapper-call declaration form (const x = onRequest(...))', () => {
     // Guard against another false green: this fixture (screenings.js) uses the
     // app's ACTUAL idiom that e3d4609's fixture never exercised — a wrapper

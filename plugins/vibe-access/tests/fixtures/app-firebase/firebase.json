@@ -19,6 +19,8 @@
       { "source": "/api/screenings/details", "function": "screeningDetails" },
       { "source": "/api/screenings/book", "function": "bookScreening" },
       { "source": "/api/admin/run-batch-job", "function": "runBatchJob" },
+      { "source": "/api/box-office/ingest", "function": "ingestBoxOfficeData" },
+      { "source": "/api/box-office/replace", "function": "replaceBoxOfficeData" },
       { "source": "**", "destination": "/index.html" }
     ]
   },
