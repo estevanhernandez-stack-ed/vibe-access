@@ -1,14 +1,13 @@
 import { detectRoutes } from './routes.mjs';
 import { detectAuth } from './auth.mjs';
+import { scaffoldAffordance } from './scaffold.mjs';
 
 export const firebaseFunctionsAdapter = {
   id: 'firebase-functions',
   matches: (detection) => detection?.framework === 'firebase-functions',
   detectRoutes,
   detectAuth,
-  scaffoldAffordance: () => {
-    throw new Error('scaffoldAffordance lands in Task 10');
-  },
+  scaffoldAffordance,
   gateMechanism: () => ({
     kind: 'env',
     description:
