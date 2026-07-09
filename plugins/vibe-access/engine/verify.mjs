@@ -23,10 +23,16 @@ async function callOne(affordance, baseUrl, fetchImpl) {
     return { affordanceId: affordance.id, status: 'fail', httpStatus: null, detail: `unreachable: ${err.message}` };
   }
   const s = res.status;
-  if (affordance.auth !== 'none' && (s === 401 || s === 403)) {
-    return { affordanceId: affordance.id, status: 'pass', httpStatus: s, detail: 'auth-gate-held' };
+  if (affordance.auth !== 'none') {
+    if (s === 401 || s === 403) {
+      return { affordanceId: affordance.id, status: 'pass', httpStatus: s, detail: 'auth-gate-held' };
+    }
+    if (s >= 200 && s < 300) {
+      return { affordanceId: affordance.id, status: 'fail', httpStatus: s, detail: `auth-gate-open: expected 401/403, got ${s}` };
+    }
+    return { affordanceId: affordance.id, status: 'fail', httpStatus: s, detail: `unexpected ${s}` };
   }
-  if (s >= 500 || (affordance.auth === 'none' && s === 404)) {
+  if (s >= 500 || s === 404) {
     return { affordanceId: affordance.id, status: 'fail', httpStatus: s, detail: `unexpected ${s}` };
   }
   return { affordanceId: affordance.id, status: 'pass', httpStatus: s, detail: '' };
