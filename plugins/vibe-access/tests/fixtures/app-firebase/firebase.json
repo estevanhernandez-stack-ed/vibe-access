@@ -18,6 +18,7 @@
       { "source": "/api/screenings", "function": "screeningsFeed" },
       { "source": "/api/screenings/details", "function": "screeningDetails" },
       { "source": "/api/screenings/book", "function": "bookScreening" },
+      { "source": "/api/admin/run-batch-job", "function": "runBatchJob" },
       { "source": "**", "destination": "/index.html" }
     ]
   },

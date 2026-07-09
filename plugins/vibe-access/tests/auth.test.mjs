@@ -70,4 +70,17 @@ describe('firebase-functions detectAuth', () => {
     const r = routes.find((x) => x.name === 'screeningsFeed');
     expect(firebaseFunctionsAdapter.detectAuth(r, ctx)).toBe('none');
   });
+
+  test('nested barrel directory (dir/index.js re-exports from a sibling file) -> token, not a false negative', () => {
+    // The generate-anagrams-batch false negative from task-15-phase1f-report.md:
+    // functions/index.js requires the directory "./src/moderation", which
+    // resolves to moderation/index.js — a pure pass-through barrel, not the
+    // real declaration. The real handler (moderation/worker.js) gates on
+    // verifyAuthToken + checkAdminRole in a standalone try/catch preceding
+    // the main try, matching the real app's anagrams/pipeline.js verbatim.
+    // Before the fix: sourceRef/handlerSourcePath landed on the empty barrel,
+    // extraction returned '', and this read 'none' despite being admin-gated.
+    const r = routes.find((x) => x.name === 'runBatchJob');
+    expect(firebaseFunctionsAdapter.detectAuth(r, ctx)).toBe('token');
+  });
 });

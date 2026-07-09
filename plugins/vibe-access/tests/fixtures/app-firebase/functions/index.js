@@ -22,3 +22,6 @@ const screeningsModule = require('./src/events/screenings');
 exports.screeningsFeed = screeningsModule.screeningsFeed;
 exports.screeningDetails = screeningsModule.screeningDetails;
 exports.bookScreening = screeningsModule.bookScreening;
+
+const moderationModule = require('./src/moderation');
+exports.runBatchJob = moderationModule.runBatchJob;

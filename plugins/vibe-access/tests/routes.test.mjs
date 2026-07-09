@@ -194,6 +194,30 @@ describe('firebase-functions detectRoutes', () => {
     });
   });
 
+  describe('nested barrel directory (dir/index.js itself re-exports from a sibling file)', () => {
+    // Mirrors the real WeSeeYou app's functions/src/anagrams/index.js ->
+    // functions/src/anagrams/pipeline.js chain (task-15-phase1f-report.md):
+    // functions/index.js requires the directory "./src/moderation", which
+    // resolves to moderation/index.js — but that file is itself a pure
+    // pass-through barrel (`const {runBatchJob} = require('./worker');
+    // module.exports = {runBatchJob};`), not the real declaration. The real
+    // handler + auth check live one hop further, in moderation/worker.js.
+    // Before the fix, sourceRef/handlerSourcePath landed on the barrel,
+    // extraction found no declaration there, and detectAuth silently
+    // degraded to 'none' even though the handler is admin-gated.
+
+    test('sourceRef resolves through the barrel to the file that actually declares the export', () => {
+      const r = routes.find((x) => x.name === 'runBatchJob');
+      expect(r).toBeDefined();
+      expect(r.sourceRef).toMatch(/src[\\/]moderation[\\/]worker\.js/);
+    });
+
+    test('method is inferred from the real handler body, not the empty barrel', () => {
+      const r = routes.find((x) => x.name === 'runBatchJob');
+      expect(r.method).toBe('POST');
+    });
+  });
+
   test('extractFunctionBody handles the verbatim wrapper-call idiom (unit probe, not just the fixture)', () => {
     // Copied verbatim from the target app's real pattern (task-15-phase1d-report.md):
     // a wrapper call as the RHS, an options object, an async arrow body, and a

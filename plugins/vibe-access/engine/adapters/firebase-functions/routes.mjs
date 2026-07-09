@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, dirname } from 'node:path';
 
 // Single-statement re-export form: exports.foo = require('./path').foo;
 const INLINE_EXPORT_RE = /exports\.(\w+)\s*=\s*require\((['"])(.+?)\2\)(?:\.(\w+))?/g;
@@ -13,50 +13,91 @@ const READ_NAME_RE = /^(get|list|my|fetch)|Data$/;
 // literal shape every handler file in practice uses.
 const MODULE_EXPORTS_BLOCK_RE = /module\.exports\s*=\s*\{([\s\S]*?)\}/;
 
+// Node-style require resolution (bare path -> .js suffix -> dir/index.js),
+// relative to an arbitrary base directory. Shared by the top-level index.js
+// resolution and by chaseReexportBarrel's recursive hop into a barrel file's
+// own requires (which are relative to *that file's* directory, not
+// functionsDir).
+function resolveRequireFrom(baseDir, requirePath) {
+  let resolved = join(baseDir, requirePath);
+
+  if (!existsSync(resolved) && existsSync(`${resolved}.js`)) {
+    resolved = `${resolved}.js`;
+  }
+
+  if (!existsSync(resolved)) {
+    return null;
+  }
+
+  try {
+    if (statSync(resolved).isDirectory()) {
+      const indexPath = join(resolved, 'index.js');
+      if (existsSync(indexPath)) {
+        resolved = indexPath;
+      } else {
+        return null;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return resolved;
+}
+
+// A directory require (`require('./foo')`) resolves to `foo/index.js`, but
+// that index.js is sometimes itself a pure pass-through barrel — it doesn't
+// define the export, it destructure-imports it from a sibling file and
+// re-exports it unchanged (e.g. `const {x} = require('./impl'); module.exports
+// = {x};`). Left alone, extraction reads the barrel file, finds no
+// declaration, and returns '' — silently degrading auth detection to 'none'
+// even though the real handler (in `impl`) has an auth check. Chase through
+// up to 5 hops of this shape until we land on a file that actually declares
+// the export, or run out of chain to follow.
+function isDirectlyDefined(name, source) {
+  return buildNameCandidates(name).some((re) => re.test(source));
+}
+
+function chaseReexportBarrel(filePath, exportName, depth = 0) {
+  if (!filePath || !exportName || depth > 5) return filePath;
+  let source;
+  try {
+    source = readFileSync(filePath, 'utf8');
+  } catch {
+    return filePath;
+  }
+  if (isDirectlyDefined(exportName, source)) return filePath;
+
+  // Destructured re-export of this specific name: `const {exportName} =
+  // require('./impl')` (possibly alongside other destructured names).
+  const escaped = exportName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const destructureRe = new RegExp(
+    `\\{[^}]*\\b${escaped}\\b[^}]*\\}\\s*=\\s*require\\((['"])(.+?)\\1\\)`
+  );
+  const match = destructureRe.exec(source);
+  if (!match) return filePath; // not the barrel shape — degrade to original, unchanged behavior
+
+  const nextPath = resolveRequireFrom(dirname(filePath), match[2]);
+  if (!nextPath || nextPath === filePath) return filePath; // no further file, or self-loop
+
+  return chaseReexportBarrel(nextPath, exportName, depth + 1);
+}
+
 function parseIndexExports(functionsDir) {
   const indexPath = join(functionsDir, 'index.js');
   if (!existsSync(indexPath)) return { exportsMap: new Map(), indexPath: null };
   const text = readFileSync(indexPath, 'utf8');
   const exportsMap = new Map();
 
-  const resolveRequirePath = (requirePath) => {
-    let resolved = join(functionsDir, requirePath);
-
-    // If the bare path doesn't exist, try .js suffix
-    if (!existsSync(resolved) && existsSync(`${resolved}.js`)) {
-      resolved = `${resolved}.js`;
-    }
-
-    if (!existsSync(resolved)) {
-      return null;
-    }
-
-    // If resolved is a directory, Node's module resolution would look for <dir>/index.js
-    try {
-      if (statSync(resolved).isDirectory()) {
-        const indexPath = join(resolved, 'index.js');
-        // Only accept the directory if index.js exists; otherwise degrade gracefully
-        if (existsSync(indexPath)) {
-          resolved = indexPath;
-        } else {
-          // Directory exists but no index.js — degrade to null instead of throwing
-          return null;
-        }
-      }
-    } catch {
-      // If stat fails (permissions, etc.), degrade gracefully
-      return null;
-    }
-
-    return resolved;
-  };
+  const resolveRequirePath = (requirePath) => resolveRequireFrom(functionsDir, requirePath);
 
   // Pass 1: single-statement form — exports.foo = require('./path').foo;
   for (const m of text.matchAll(INLINE_EXPORT_RE)) {
     const [, indexExportName, , requirePath, sourceExportName] = m;
+    const exportName = sourceExportName || indexExportName;
     exportsMap.set(indexExportName, {
-      filePath: resolveRequirePath(requirePath),
-      exportName: sourceExportName || indexExportName,
+      filePath: chaseReexportBarrel(resolveRequirePath(requirePath), exportName),
+      exportName,
     });
   }
 
@@ -71,7 +112,7 @@ function parseIndexExports(functionsDir) {
     if (exportsMap.has(indexExportName)) continue; // already resolved via the inline form
     if (!bindings.has(ident)) continue; // `ident` isn't a require() binding — not this pattern
     exportsMap.set(indexExportName, {
-      filePath: bindings.get(ident),
+      filePath: chaseReexportBarrel(bindings.get(ident), sourceExportName),
       exportName: sourceExportName,
     });
   }
