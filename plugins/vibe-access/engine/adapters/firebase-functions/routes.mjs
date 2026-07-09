@@ -21,7 +21,7 @@ function parseIndexExports(functionsDir) {
   return { exportsMap, indexPath };
 }
 
-function extractFunctionBody(exportName, source) {
+export function extractFunctionBody(exportName, source) {
   const lines = source.split('\n');
   const exportRe = new RegExp(`exports\\.${exportName}\\b`);
   let inFunction = false;
