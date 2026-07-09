@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — 2026-07-XX
+## 0.1.0 — 2026-07-09
 
 The 15th vibe-* plugin. Initial release: scan (route + auth inventory,
 firebase-functions adapter), map (agent-access.json manifest, dev/prod-safe tiers,
