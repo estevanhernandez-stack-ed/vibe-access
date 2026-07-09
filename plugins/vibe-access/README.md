@@ -8,9 +8,9 @@ every affordance before anything counts as done.
 ## Where this sits
 
 The family's access work runs in three stages: **agent affordances → agent-facing API →
-MCP server**. Vibe-access builds the first two — it scans what your app already exposes,
-scaffolds the affordances it's missing, and writes them into a manifest an agent can
-read cold. The manifest is the embryo of your eventual MCP server, not the server itself.
+MCP server**. Vibe-access owns the middle: it maps what your app already exposes into an
+agent-facing API, scaffolds the affordances it's missing, and writes them into a manifest
+an agent can read cold. The manifest is the embryo of your eventual MCP server, not the server itself.
 Graduating a verified manifest into a real MCP server stays a deliberate, manual step —
 vibe-access won't do it for you.
 
