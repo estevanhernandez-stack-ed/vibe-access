@@ -25,6 +25,23 @@ describe('firebase-functions detectRoutes', () => {
     expect(routes.find((r) => r.name === 'submitScore').method).toBe('POST');
   });
 
+  test('one-liner export does not bleed into the next export\'s method guard', () => {
+    // ping is a net-zero-brace one-liner immediately followed by leaderboard,
+    // which guards req.method === 'GET'. Without per-export termination, ping's
+    // extraction would run past its own statement into leaderboard's body and
+    // falsely inherit GET.
+    expect(routes.find((r) => r.name === 'ping').method).toBe('POST');
+  });
+
+  test('export name boundary match avoids substring collision', () => {
+    // echoBack is a one-liner (no GET guard) that sits right before echo,
+    // whose body does guard req.method === 'GET'. A substring match on
+    // "exports.echo" would incorrectly match the "exports.echoBack" line
+    // first. Both methods must resolve correctly.
+    expect(routes.find((r) => r.name === 'echo').method).toBe('GET');
+    expect(routes.find((r) => r.name === 'echoBack').method).toBe('POST');
+  });
+
   test('a rewrite with no export lands in unmapped, not dropped', () => {
     expect(unmapped.some((u) => u.reason.includes('ghostFunction'))).toBe(true);
   });

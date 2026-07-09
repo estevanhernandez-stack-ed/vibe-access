@@ -23,6 +23,7 @@ function parseIndexExports(functionsDir) {
 
 function extractFunctionBody(exportName, source) {
   const lines = source.split('\n');
+  const exportRe = new RegExp(`exports\\.${exportName}\\b`);
   let inFunction = false;
   let functionCode = '';
   let braceCount = 0;
@@ -30,10 +31,20 @@ function extractFunctionBody(exportName, source) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    if (!inFunction && line.includes(`exports.${exportName}`)) {
+    if (!inFunction && exportRe.test(line)) {
       inFunction = true;
       functionCode = line;
       braceCount = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+
+      // One-liner export (net-zero braces on the match line itself): the
+      // statement is fully contained here. Without this check, a one-liner
+      // that isn't the last export in the file bleeds into whatever export
+      // follows it, inheriting its method guards.
+      const trimmed = line.trim();
+      const isArrowExpressionBody = /=>/.test(trimmed) && !trimmed.endsWith('{');
+      if (braceCount === 0 && (trimmed.endsWith(';') || isArrowExpressionBody)) {
+        break;
+      }
     } else if (inFunction) {
       functionCode += '\n' + line;
       braceCount += (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;

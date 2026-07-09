@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { resolveAdapter, REGISTERED_ADAPTERS } from '../engine/adapters/index.mjs';
+import { resolveAdapter, REGISTERED_ADAPTERS, IMPLEMENTED_ADAPTERS } from '../engine/adapters/index.mjs';
 
 describe('resolveAdapter', () => {
   test('unknown framework resolves to not-yet-implemented with null adapter', () => {
@@ -19,17 +19,22 @@ describe('resolveAdapter', () => {
     expect(resolveAdapter(null).status).toBe('not-yet-implemented');
   });
 
-  test('every registered adapter satisfies the contract surface', () => {
+  test('every registered adapter (implemented + stub) exposes id + matches', () => {
     for (const a of REGISTERED_ADAPTERS) {
       expect(typeof a.id).toBe('string');
       expect(typeof a.matches).toBe('function');
-      // IMPLEMENTED adapters (non-stubs) must have detectRoutes, detectAuth, scaffoldAffordance, gateMechanism
-      if (a.id === 'firebase-functions') {
-        expect(typeof a.detectRoutes).toBe('function');
-        expect(typeof a.detectAuth).toBe('function');
-        expect(typeof a.scaffoldAffordance).toBe('function');
-        expect(typeof a.gateMechanism).toBe('function');
-      }
+    }
+  });
+
+  test('every implemented adapter satisfies the full contract surface', () => {
+    expect(IMPLEMENTED_ADAPTERS.length).toBeGreaterThan(0);
+    for (const a of IMPLEMENTED_ADAPTERS) {
+      expect(typeof a.id).toBe('string');
+      expect(typeof a.matches).toBe('function');
+      expect(typeof a.detectRoutes).toBe('function');
+      expect(typeof a.detectAuth).toBe('function');
+      expect(typeof a.scaffoldAffordance).toBe('function');
+      expect(typeof a.gateMechanism).toBe('function');
     }
   });
 
