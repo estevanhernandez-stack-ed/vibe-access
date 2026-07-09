@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { detect } from '../engine/detect.mjs';
 import { firebaseFunctionsAdapter } from '../engine/adapters/firebase-functions/index.mjs';
+import { extractFunctionBody } from '../engine/adapters/firebase-functions/routes.mjs';
 
 const appRoot = fileURLToPath(new URL('./fixtures/app-firebase', import.meta.url));
 const ghostDirPath = join(appRoot, 'functions', 'src', 'ghostdir');
@@ -157,5 +158,73 @@ describe('firebase-functions detectRoutes', () => {
     expect(names).toEqual(
       expect.arrayContaining(['getProfile', 'updateProfile', 'publicFeed', 'feedAlias'])
     );
+  });
+
+  describe('wrapper-call declaration form (const x = onRequest(...))', () => {
+    // Guard against another false green: this fixture (screenings.js) uses the
+    // app's ACTUAL idiom that e3d4609's fixture never exercised — a wrapper
+    // function call (onRequest) as the RHS of the const declaration, not a
+    // bare function/arrow expression. See task-15-phase1d-report.md.
+
+    test('screeningsFeed (positive req.method === "GET" guard) is discovered and inferred GET', () => {
+      const r = routes.find((x) => x.name === 'screeningsFeed');
+      expect(r).toBeDefined();
+      expect(r.method).toBe('GET');
+    });
+
+    test('screeningDetails (reject-others req.method !== "GET" guard) is inferred GET, not the POST default', () => {
+      // Re-asserts the phase-1d method-inference finding: a wrapper-form
+      // handler whose body guards with `!==` (reject anything but GET) must
+      // infer GET, not silently fall back to the POST default because the
+      // guard used the negative form.
+      const r = routes.find((x) => x.name === 'screeningDetails');
+      expect(r).toBeDefined();
+      expect(r.method).toBe('GET');
+    });
+
+    test('bookScreening (verifyAuthToken call, no GET guard, non-read name) is inferred POST', () => {
+      const r = routes.find((x) => x.name === 'bookScreening');
+      expect(r).toBeDefined();
+      expect(r.method).toBe('POST');
+    });
+
+    test('sourceRef resolves through the wrapper-call bulk-export file', () => {
+      const r = routes.find((x) => x.name === 'bookScreening');
+      expect(r.sourceRef).toMatch(/src[\\/]events[\\/]screenings\.js/);
+    });
+  });
+
+  test('extractFunctionBody handles the verbatim wrapper-call idiom (unit probe, not just the fixture)', () => {
+    // Copied verbatim from the target app's real pattern (task-15-phase1d-report.md):
+    // a wrapper call as the RHS, an options object, an async arrow body, and a
+    // bulk module.exports — exercised directly against extractFunctionBody so
+    // this test cannot pass on a fixture that quietly drifts from the real idiom.
+    const source = `const { onRequest } = require("firebase-functions/v2/https");
+
+const submitScore = onRequest({ cors: true }, async (req, res) => {
+  const user = await verifyAuthToken(req);
+  if (req.method !== "POST") { res.status(405).send("nope"); return; }
+  res.json({ ok: true });
+});
+
+module.exports = { submitScore };
+`;
+    const body = extractFunctionBody('submitScore', source);
+    expect(body).toContain('verifyAuthToken');
+    expect(body).toContain('req.method !== "POST"');
+  });
+
+  test('const-declaration wrapper-call form does not collide with a longer name sharing the prefix', () => {
+    // Guards the \b anchor: `const submitScore =` must not match when hunting
+    // for `submitScoreHelper`, and vice versa.
+    const source = `const submitScoreHelper = (x) => x + 1;
+const submitScore = onRequest({ cors: true }, async (req, res) => {
+  const user = await verifyAuthToken(req);
+  res.json({ user });
+});
+`;
+    const body = extractFunctionBody('submitScore', source);
+    expect(body).toContain('verifyAuthToken');
+    expect(body).not.toContain('submitScoreHelper');
   });
 });

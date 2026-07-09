@@ -109,7 +109,13 @@ function buildNameCandidates(name) {
   return [
     new RegExp(`exports\\.${name}\\b`),
     new RegExp(`(?:async\\s+)?function\\s+${name}\\b\\s*\\(`),
-    new RegExp(`(?:const|let|var)\\s+${name}\\b\\s*=\\s*(?:async\\s*)?(?:\\(|function\\b)`),
+    // Any const/let/var declaration of this name, regardless of RHS shape.
+    // Covers bare function/arrow expressions AND wrapper-call forms like
+    // `const submitScore = onRequest({ cors: true }, async (req, res) => {`
+    // (Cloud Functions v2's onRequest/onCall wrap the real handler as an
+    // argument rather than assigning it directly) — the brace-counting scan
+    // below consumes the whole statement regardless of which shape it is.
+    new RegExp(`(?:const|let|var)\\s+${name}\\b\\s*=`),
   ];
 }
 
@@ -157,8 +163,14 @@ export function extractFunctionBody(exportName, source) {
   return '';
 }
 
+// Matches both the positive guard (`req.method === 'GET'`) and the
+// reject-others guard (`req.method !== 'GET'` early-returning/405-ing on
+// anything but GET) — both are evidence the route is GET-only. Quote style
+// is app-dependent (single or double), so both are accepted.
+const METHOD_GET_RE = /req\.method\s*(?:===?|!==)\s*["']GET["']/;
+
 function inferMethod(name, handlerSource) {
-  if (handlerSource && /req\.method\s*===?\s*['"]GET['"]/.test(handlerSource)) return 'GET';
+  if (handlerSource && METHOD_GET_RE.test(handlerSource)) return 'GET';
   if (READ_NAME_RE.test(name)) return 'GET';
   return 'POST';
 }

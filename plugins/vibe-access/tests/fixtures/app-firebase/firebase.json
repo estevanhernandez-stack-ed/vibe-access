@@ -15,6 +15,9 @@
       { "source": "/api/profile-update", "function": "updateProfile" },
       { "source": "/api/public-feed", "function": "publicFeed" },
       { "source": "/api/public-feed-alias", "function": "feedAlias" },
+      { "source": "/api/screenings", "function": "screeningsFeed" },
+      { "source": "/api/screenings/details", "function": "screeningDetails" },
+      { "source": "/api/screenings/book", "function": "bookScreening" },
       { "source": "**", "destination": "/index.html" }
     ]
   },

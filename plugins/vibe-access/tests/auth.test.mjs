@@ -55,4 +55,19 @@ describe('firebase-functions detectAuth', () => {
     const r = routes.find((x) => x.name === 'feedAlias');
     expect(firebaseFunctionsAdapter.detectAuth(r, ctx)).toBe('none');
   });
+
+  test('wrapper-call declaration form (const x = onRequest(...)) calling verifyAuthToken -> token', () => {
+    // bookScreening is the app's real idiom: e3d4609's declaration-form regex
+    // only matched a bare function/arrow expression RHS and never matched a
+    // wrapper-call RHS, so extraction silently returned '' and auth read
+    // 'none' even though the handler calls verifyAuthToken. See
+    // task-15-phase1d-report.md.
+    const r = routes.find((x) => x.name === 'bookScreening');
+    expect(firebaseFunctionsAdapter.detectAuth(r, ctx)).toBe('token');
+  });
+
+  test('wrapper-call declaration form with no auth call -> none', () => {
+    const r = routes.find((x) => x.name === 'screeningsFeed');
+    expect(firebaseFunctionsAdapter.detectAuth(r, ctx)).toBe('none');
+  });
 });

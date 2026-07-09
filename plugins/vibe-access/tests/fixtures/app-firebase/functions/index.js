@@ -17,3 +17,8 @@ exports.getProfile = profilesModule.getProfile;
 exports.updateProfile = profilesModule.updateProfile;
 exports.publicFeed = profilesModule.publicFeed;
 exports.feedAlias = profilesModule.feedAlias;
+
+const screeningsModule = require('./src/events/screenings');
+exports.screeningsFeed = screeningsModule.screeningsFeed;
+exports.screeningDetails = screeningsModule.screeningDetails;
+exports.bookScreening = screeningsModule.bookScreening;
