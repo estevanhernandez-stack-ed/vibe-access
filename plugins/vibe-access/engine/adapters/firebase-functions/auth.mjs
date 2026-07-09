@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { extractFunctionBody } from './routes.mjs';
 
-const TOKEN_CALL_RE = /\bverifyAuthToken\s*\(/;
+const TOKEN_CALL_RE = /\b(verifyAuthToken|verifyIdToken)\s*\(/;
 
 export function detectAuth(route) {
   if (!route?.handlerSourcePath || !route?.name) return 'none';

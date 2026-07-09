@@ -129,4 +129,33 @@ describe('firebase-functions detectRoutes', () => {
     const directoryRewriteCount = routes.filter((r) => r.sourceRef.includes('anagrams')).length;
     expect(directoryRewriteCount).toBeGreaterThan(0);
   });
+
+  test('bulk-export handler (function declaration) is discovered and inferred GET via req.method guard', () => {
+    // publicFeed is declared as `function publicFeed(req, res) {...}` and exported
+    // only via `module.exports = { ... }` at the bottom of the file — no per-function
+    // `exports.publicFeed = ...` line exists. Its name doesn't match the get/list/my/
+    // fetch/*Data read-name heuristic, so a GET result here can only come from the
+    // declaration-form extraction finding the req.method guard inside the body.
+    expect(routes.find((r) => r.name === 'publicFeed').method).toBe('GET');
+  });
+
+  test('bulk-export handler: name heuristic still applies regardless of guard presence', () => {
+    expect(routes.find((r) => r.name === 'getProfile').method).toBe('GET');
+  });
+
+  test('aliased bulk export (feedAlias -> publicFeed) resolves method via the aliased declaration body', () => {
+    // index.js exports `feedAlias` via the two-statement form, but profiles.js's
+    // module.exports maps feedAlias to the *different* local name publicFeed.
+    // Without alias-following, extraction would search for a `feedAlias` declaration
+    // that doesn't exist, and method would silently fall back to POST from the name
+    // heuristic instead of finding publicFeed's req.method guard.
+    expect(routes.find((r) => r.name === 'feedAlias').method).toBe('GET');
+  });
+
+  test('count of routes reflects the new bulk-export fixture entries (profiles.js x4)', () => {
+    const names = routes.map((r) => r.name);
+    expect(names).toEqual(
+      expect.arrayContaining(['getProfile', 'updateProfile', 'publicFeed', 'feedAlias'])
+    );
+  });
 });

@@ -11,3 +11,9 @@ exports.saveQuiz = quizModule.saveQuiz;
 
 const anagramModule = require('./src/anagrams');
 exports.generateAnagramsBatch = anagramModule.generateAnagramsBatch;
+
+const profilesModule = require('./src/social/profiles');
+exports.getProfile = profilesModule.getProfile;
+exports.updateProfile = profilesModule.updateProfile;
+exports.publicFeed = profilesModule.publicFeed;
+exports.feedAlias = profilesModule.feedAlias;

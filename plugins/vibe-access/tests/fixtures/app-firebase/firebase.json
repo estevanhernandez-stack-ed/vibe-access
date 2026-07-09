@@ -11,6 +11,10 @@
       { "source": "/api/quiz-data", "function": "getQuizData" },
       { "source": "/api/quiz-save", "function": "saveQuiz" },
       { "source": "/api/admin/generate-anagrams", "function": "generateAnagramsBatch" },
+      { "source": "/api/profile", "function": "getProfile" },
+      { "source": "/api/profile-update", "function": "updateProfile" },
+      { "source": "/api/public-feed", "function": "publicFeed" },
+      { "source": "/api/public-feed-alias", "function": "feedAlias" },
       { "source": "**", "destination": "/index.html" }
     ]
   },

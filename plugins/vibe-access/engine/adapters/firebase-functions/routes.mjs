@@ -8,6 +8,10 @@ const REQUIRE_BINDING_RE = /(?:const|let|var)\s+(\w+)\s*=\s*require\((['"])(.+?)
 // Two-statement re-export form, the export line: exports.foo = mod.foo (semicolon optional, ASI).
 const BINDING_EXPORT_RE = /exports\.(\w+)\s*=\s*(\w+)\.(\w+)\s*;?/g;
 const READ_NAME_RE = /^(get|list|my|fetch)|Data$/;
+// Bulk export block: module.exports = { a, b: c, ... }; — matched non-greedily
+// up to the first closing brace, which holds for the flat (non-nested) object
+// literal shape every handler file in practice uses.
+const MODULE_EXPORTS_BLOCK_RE = /module\.exports\s*=\s*\{([\s\S]*?)\}/;
 
 function parseIndexExports(functionsDir) {
   const indexPath = join(functionsDir, 'index.js');
@@ -75,41 +79,82 @@ function parseIndexExports(functionsDir) {
   return { exportsMap, indexPath };
 }
 
-export function extractFunctionBody(exportName, source) {
-  const lines = source.split('\n');
-  const exportRe = new RegExp(`exports\\.${exportName}\\b`);
-  let inFunction = false;
-  let functionCode = '';
-  let braceCount = 0;
+// Bulk-export files (module.exports = { getProfile, feedAlias: publicFeed })
+// let the export name the caller asks for point at a differently-named local
+// declaration. Resolve that alias before hunting for the definition so the
+// brace-counting scan below runs against the function that actually owns the
+// body, not a name that never appears as a declaration.
+function resolveExportAlias(exportName, source) {
+  const block = MODULE_EXPORTS_BLOCK_RE.exec(source);
+  if (!block) return exportName;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (!inFunction && exportRe.test(line)) {
-      inFunction = true;
-      functionCode = line;
-      braceCount = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
-
-      // One-liner export (net-zero braces on the match line itself): the
-      // statement is fully contained here. Without this check, a one-liner
-      // that isn't the last export in the file bleeds into whatever export
-      // follows it, inheriting its method guards.
-      const trimmed = line.trim();
-      const isArrowExpressionBody = /=>/.test(trimmed) && !trimmed.endsWith('{');
-      if (braceCount === 0 && (trimmed.endsWith(';') || isArrowExpressionBody)) {
-        break;
-      }
-    } else if (inFunction) {
-      functionCode += '\n' + line;
-      braceCount += (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
-
-      if (braceCount === 0 && line.includes('}')) {
-        break;
-      }
+  for (const rawEntry of block[1].split(',')) {
+    const entry = rawEntry.trim();
+    if (!entry) continue;
+    const aliasMatch = entry.match(/^(\w+)\s*:\s*(\w+)$/);
+    if (aliasMatch && aliasMatch[1] === exportName) {
+      return aliasMatch[2];
     }
   }
 
-  return functionCode;
+  return exportName; // shorthand entry, or no entry found — name is unchanged
+}
+
+// Match starts tried in priority order for a given (already alias-resolved)
+// name. Handler files don't only use `exports.foo = ...` (that's the shape
+// functions/index.js re-exports in) — they also declare plain functions and
+// export them in bulk at the bottom of the file, so the definition site can
+// be a function declaration or a const/let/var function expression instead.
+function buildNameCandidates(name) {
+  return [
+    new RegExp(`exports\\.${name}\\b`),
+    new RegExp(`(?:async\\s+)?function\\s+${name}\\b\\s*\\(`),
+    new RegExp(`(?:const|let|var)\\s+${name}\\b\\s*=\\s*(?:async\\s*)?(?:\\(|function\\b)`),
+  ];
+}
+
+export function extractFunctionBody(exportName, source) {
+  const resolvedName = resolveExportAlias(exportName, source);
+  const lines = source.split('\n');
+
+  for (const exportRe of buildNameCandidates(resolvedName)) {
+    let inFunction = false;
+    let functionCode = '';
+    let braceCount = 0;
+    let matched = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      if (!inFunction && exportRe.test(line)) {
+        matched = true;
+        inFunction = true;
+        functionCode = line;
+        braceCount = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+
+        // One-liner export (net-zero braces on the match line itself): the
+        // statement is fully contained here. Without this check, a one-liner
+        // that isn't the last export in the file bleeds into whatever export
+        // follows it, inheriting its method guards.
+        const trimmed = line.trim();
+        const isArrowExpressionBody = /=>/.test(trimmed) && !trimmed.endsWith('{');
+        if (braceCount === 0 && (trimmed.endsWith(';') || isArrowExpressionBody)) {
+          break;
+        }
+      } else if (inFunction) {
+        functionCode += '\n' + line;
+        braceCount += (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+
+        if (braceCount === 0 && line.includes('}')) {
+          break;
+        }
+      }
+    }
+
+    if (matched) return functionCode;
+  }
+
+  return '';
 }
 
 function inferMethod(name, handlerSource) {
