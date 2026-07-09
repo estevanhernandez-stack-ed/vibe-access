@@ -1,8 +1,8 @@
 import { nextjsStub } from './_stubs/nextjs.mjs';
 import { expressStub } from './_stubs/express.mjs';
+import { firebaseFunctionsAdapter } from './firebase-functions/index.mjs';
 
-// Task 5 replaces this empty array with [firebaseFunctionsAdapter].
-const IMPLEMENTED_ADAPTERS = [];
+const IMPLEMENTED_ADAPTERS = [firebaseFunctionsAdapter];
 const STUB_ADAPTERS = [nextjsStub, expressStub];
 
 export const REGISTERED_ADAPTERS = [...IMPLEMENTED_ADAPTERS, ...STUB_ADAPTERS];

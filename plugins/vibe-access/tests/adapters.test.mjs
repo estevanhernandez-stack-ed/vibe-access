@@ -23,6 +23,19 @@ describe('resolveAdapter', () => {
     for (const a of REGISTERED_ADAPTERS) {
       expect(typeof a.id).toBe('string');
       expect(typeof a.matches).toBe('function');
+      // IMPLEMENTED adapters (non-stubs) must have detectRoutes, detectAuth, scaffoldAffordance, gateMechanism
+      if (a.id === 'firebase-functions') {
+        expect(typeof a.detectRoutes).toBe('function');
+        expect(typeof a.detectAuth).toBe('function');
+        expect(typeof a.scaffoldAffordance).toBe('function');
+        expect(typeof a.gateMechanism).toBe('function');
+      }
     }
+  });
+
+  test('firebase-functions detection resolves ready', () => {
+    const r = resolveAdapter({ framework: 'firebase-functions', rewrites: [] });
+    expect(r.status).toBe('ready');
+    expect(r.adapter.id).toBe('firebase-functions');
   });
 });

@@ -4,6 +4,7 @@
     "rewrites": [
       { "source": "/api/leaderboard", "function": "leaderboard" },
       { "source": "/api/submit-score", "function": "submitScore" },
+      { "source": "/api/ghost", "function": "ghostFunction" },
       { "source": "**", "destination": "/index.html" }
     ]
   },

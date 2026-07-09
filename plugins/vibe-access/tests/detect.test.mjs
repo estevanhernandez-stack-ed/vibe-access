@@ -9,7 +9,7 @@ describe('detect', () => {
     const d = detect(fix('app-firebase'));
     expect(d.framework).toBe('firebase-functions');
     expect(d.functionsDir).toMatch(/functions$/);
-    expect(d.rewrites).toHaveLength(3);
+    expect(d.rewrites).toHaveLength(4);
   });
 
   test('recognizes a next.js app from package.json deps', () => {

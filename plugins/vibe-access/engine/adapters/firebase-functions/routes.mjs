@@ -1,0 +1,97 @@
+import { readFileSync, existsSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+const EXPORT_RE = /exports\.(\w+)\s*=\s*require\((['"])(.+?)\2\)(?:\.(\w+))?/g;
+const READ_NAME_RE = /^(get|list|my|fetch)|Data$/;
+
+function parseIndexExports(functionsDir) {
+  const indexPath = join(functionsDir, 'index.js');
+  if (!existsSync(indexPath)) return { exportsMap: new Map(), indexPath: null };
+  const text = readFileSync(indexPath, 'utf8');
+  const exportsMap = new Map();
+  for (const m of text.matchAll(EXPORT_RE)) {
+    const [, indexExportName, , requirePath, sourceExportName] = m;
+    let resolved = join(functionsDir, requirePath);
+    if (!existsSync(resolved) && existsSync(`${resolved}.js`)) resolved = `${resolved}.js`;
+    exportsMap.set(indexExportName, {
+      filePath: existsSync(resolved) ? resolved : null,
+      exportName: sourceExportName || indexExportName,
+    });
+  }
+  return { exportsMap, indexPath };
+}
+
+function extractFunctionBody(exportName, source) {
+  const lines = source.split('\n');
+  let inFunction = false;
+  let functionCode = '';
+  let braceCount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (!inFunction && line.includes(`exports.${exportName}`)) {
+      inFunction = true;
+      functionCode = line;
+      braceCount = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+    } else if (inFunction) {
+      functionCode += '\n' + line;
+      braceCount += (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
+
+      if (braceCount === 0 && line.includes('}')) {
+        break;
+      }
+    }
+  }
+
+  return functionCode;
+}
+
+function inferMethod(name, handlerSource) {
+  if (handlerSource && /req\.method\s*===?\s*['"]GET['"]/.test(handlerSource)) return 'GET';
+  if (READ_NAME_RE.test(name)) return 'GET';
+  return 'POST';
+}
+
+export function detectRoutes(ctx) {
+  const { detection, appRoot } = ctx;
+  const routes = [];
+  const unmapped = [];
+  const { exportsMap, indexPath } = parseIndexExports(detection.functionsDir);
+  const indexRef = indexPath ? relative(appRoot, indexPath) : 'functions/index.js';
+  const seenExports = new Set();
+
+  for (const rw of detection.rewrites) {
+    if (!rw.function) continue; // SPA fallback / destination rewrites are not API surface
+    if (!exportsMap.has(rw.function)) {
+      unmapped.push({
+        sourceRef: indexRef,
+        reason: `rewrite ${rw.source} points at ${rw.function}, which has no export in index.js`,
+      });
+      continue;
+    }
+    seenExports.add(rw.function);
+    const mapEntry = exportsMap.get(rw.function);
+    const handlerSourcePath = mapEntry?.filePath;
+    const sourceExportName = mapEntry?.exportName;
+    const fileSource = handlerSourcePath ? readFileSync(handlerSourcePath, 'utf8') : null;
+    const handlerSource = fileSource && sourceExportName ? extractFunctionBody(sourceExportName, fileSource) : null;
+    routes.push({
+      name: rw.function,
+      method: inferMethod(rw.function, handlerSource),
+      path: rw.source,
+      sourceRef: handlerSourcePath ? relative(appRoot, handlerSourcePath) : indexRef,
+      handlerSourcePath,
+    });
+  }
+
+  for (const [exportName] of exportsMap) {
+    if (!seenExports.has(exportName)) {
+      unmapped.push({
+        sourceRef: indexRef,
+        reason: `export ${exportName} has no hosting rewrite — callable only via direct function URL`,
+      });
+    }
+  }
+  return { routes, unmapped };
+}
