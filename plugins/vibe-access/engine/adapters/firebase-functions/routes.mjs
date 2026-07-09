@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 // Single-statement re-export form: exports.foo = require('./path').foo;
@@ -17,8 +17,34 @@ function parseIndexExports(functionsDir) {
 
   const resolveRequirePath = (requirePath) => {
     let resolved = join(functionsDir, requirePath);
-    if (!existsSync(resolved) && existsSync(`${resolved}.js`)) resolved = `${resolved}.js`;
-    return existsSync(resolved) ? resolved : null;
+
+    // If the bare path doesn't exist, try .js suffix
+    if (!existsSync(resolved) && existsSync(`${resolved}.js`)) {
+      resolved = `${resolved}.js`;
+    }
+
+    if (!existsSync(resolved)) {
+      return null;
+    }
+
+    // If resolved is a directory, Node's module resolution would look for <dir>/index.js
+    try {
+      if (statSync(resolved).isDirectory()) {
+        const indexPath = join(resolved, 'index.js');
+        // Only accept the directory if index.js exists; otherwise degrade gracefully
+        if (existsSync(indexPath)) {
+          resolved = indexPath;
+        } else {
+          // Directory exists but no index.js — degrade to null instead of throwing
+          return null;
+        }
+      }
+    } catch {
+      // If stat fails (permissions, etc.), degrade gracefully
+      return null;
+    }
+
+    return resolved;
   };
 
   // Pass 1: single-statement form — exports.foo = require('./path').foo;
@@ -113,7 +139,19 @@ export function detectRoutes(ctx) {
     const mapEntry = exportsMap.get(rw.function);
     const handlerSourcePath = mapEntry?.filePath;
     const sourceExportName = mapEntry?.exportName;
-    const fileSource = handlerSourcePath ? readFileSync(handlerSourcePath, 'utf8') : null;
+    // Defensive: handlerSourcePath should never be a directory after the fix, but handle it gracefully
+    let fileSource = null;
+    if (handlerSourcePath) {
+      try {
+        // Guard against EISDIR: skip if path is actually a directory (shouldn't happen, but be safe)
+        if (!statSync(handlerSourcePath).isDirectory()) {
+          fileSource = readFileSync(handlerSourcePath, 'utf8');
+        }
+      } catch {
+        // If we can't read it (permissions, deleted file, etc.), treat as unresolvable
+        fileSource = null;
+      }
+    }
     const handlerSource = fileSource && sourceExportName ? extractFunctionBody(sourceExportName, fileSource) : null;
     routes.push({
       name: rw.function,

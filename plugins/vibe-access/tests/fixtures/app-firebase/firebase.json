@@ -10,6 +10,7 @@
       { "source": "/api/ghost", "function": "ghostFunction" },
       { "source": "/api/quiz-data", "function": "getQuizData" },
       { "source": "/api/quiz-save", "function": "saveQuiz" },
+      { "source": "/api/admin/generate-anagrams", "function": "generateAnagramsBatch" },
       { "source": "**", "destination": "/index.html" }
     ]
   },

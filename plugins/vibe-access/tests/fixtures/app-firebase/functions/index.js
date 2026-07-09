@@ -7,4 +7,7 @@ exports.orphanFunction = require('./src/social/leaderboards').orphanFunction;
 
 const quizModule = require('./src/games/quiz');
 exports.getQuizData = quizModule.getQuizData;
-exports.saveQuiz = quizModule.saveQuiz
+exports.saveQuiz = quizModule.saveQuiz;
+
+const anagramModule = require('./src/anagrams');
+exports.generateAnagramsBatch = anagramModule.generateAnagramsBatch;
