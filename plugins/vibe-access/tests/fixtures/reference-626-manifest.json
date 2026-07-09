@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "app": "626labs-dashboard",
+  "adapter": "reference-hand-written",
+  "generatedAt": "2026-07-09T00:00:00.000Z",
+  "baseUrls": { "dev": "http://localhost:3626" },
+  "discoveryRoute": null,
+  "affordances": [
+    {
+      "id": "get-recent-activity",
+      "description": "Session resume package: recent decisions, tasks, and context for a project.",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": { "type": "http", "method": "POST", "path": "/api/get_recent_activity" },
+      "input": { "type": "object", "properties": { "projectId": { "type": "string" }, "decisionLimit": { "type": "number" } } },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "mcp-server/src/tools/session.ts",
+      "origin": "existing",
+      "verified": { "status": "unverified" }
+    },
+    {
+      "id": "manage-tasks",
+      "description": "Create, update, or manage tasks in a project. Actions: create | update | updateStatus | addSubtask | bulkUpdate | bulkCreate.",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": { "type": "http", "method": "POST", "path": "/api/manage_tasks" },
+      "input": { "type": "object", "properties": { "projectId": { "type": "string" }, "action": { "type": "string" }, "title": { "type": "string" } } },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "mcp-server/src/tools/tasks.ts:33",
+      "origin": "existing",
+      "verified": { "status": "unverified" }
+    },
+    {
+      "id": "manage-decisions",
+      "description": "Log, search, or review architectural decisions. Actions: log | search | requestReview | getUnified.",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": { "type": "http", "method": "POST", "path": "/api/manage_decisions" },
+      "input": { "type": "object", "properties": { "action": { "type": "string" }, "projectId": { "type": "string" }, "decision": { "type": "string" } } },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "mcp-server/src/tools/decisions.ts",
+      "origin": "existing",
+      "verified": { "status": "unverified" }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vibe-access/inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "app", "adapter", "generatedAt", "routes", "unmapped"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "app": { "type": "string" },
+    "adapter": { "type": "string" },
+    "generatedAt": { "type": "string" },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "method", "path", "sourceRef", "auth"],
+        "properties": {
+          "name": { "type": "string" },
+          "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+          "path": { "type": "string" },
+          "sourceRef": { "type": "string" },
+          "auth": { "enum": ["none", "session", "token"] }
+        }
+      }
+    },
+    "unmapped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourceRef", "reason"],
+        "properties": {
+          "sourceRef": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vibe-access/config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "adapter", "appName", "baseUrls", "devRunCommand", "capturedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "adapter": { "type": "string" },
+    "appName": { "type": "string", "minLength": 1 },
+    "baseUrls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dev"],
+      "properties": { "dev": { "type": "string" }, "prod": { "type": "string" } }
+    },
+    "devRunCommand": { "type": "string" },
+    "discoveryRoute": { "type": ["string", "null"] },
+    "authModelNote": { "type": "string" },
+    "capturedAt": { "type": "string" }
+  }
+}

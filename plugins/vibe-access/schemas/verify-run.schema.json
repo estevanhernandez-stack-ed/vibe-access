@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vibe-access/verify-run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "startedAt", "baseUrl", "forced", "results"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "runId": { "type": "string" },
+    "startedAt": { "type": "string" },
+    "baseUrl": { "type": "string" },
+    "forced": { "type": "boolean" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["affordanceId", "status"],
+        "properties": {
+          "affordanceId": { "type": "string" },
+          "status": { "enum": ["pass", "fail", "pending-agent", "skipped"] },
+          "httpStatus": { "type": ["integer", "null"] },
+          "detail": { "type": "string" }
+        }
+      }
+    }
+  }
+}

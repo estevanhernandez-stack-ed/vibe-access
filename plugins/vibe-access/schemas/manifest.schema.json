@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vibe-access/manifest",
+  "title": "agent-access.json — agent-facing access manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "app", "adapter", "generatedAt", "baseUrls", "affordances"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "app": { "type": "string", "minLength": 1 },
+    "adapter": { "type": "string", "minLength": 1 },
+    "generatedAt": { "type": "string" },
+    "baseUrls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dev"],
+      "properties": {
+        "dev": { "type": "string" },
+        "prod": { "type": "string" }
+      }
+    },
+    "discoveryRoute": { "type": ["string", "null"] },
+    "affordances": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/affordance" }
+    }
+  },
+  "definitions": {
+    "affordance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "tier", "kind", "transport", "auth", "sourceRef", "origin", "verified"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]*$" },
+        "description": { "type": "string", "minLength": 1 },
+        "tier": { "enum": ["dev", "prod-safe"] },
+        "kind": { "enum": ["read", "act", "seed", "reset", "capture"] },
+        "transport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "method", "path"],
+          "properties": {
+            "type": { "enum": ["http"] },
+            "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+            "path": { "type": "string", "pattern": "^/" }
+          }
+        },
+        "input": { "type": ["object", "null"] },
+        "output": { "type": ["object", "null"] },
+        "auth": { "enum": ["none", "session", "token"] },
+        "sourceRef": { "type": "string" },
+        "origin": { "enum": ["existing", "scaffolded"] },
+        "verified": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["unverified", "pass", "fail", "pending-agent"] },
+            "at": { "type": "string" },
+            "runId": { "type": "string" },
+            "detail": { "type": "string" }
+          }
+        },
+        "overrides": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tier": { "enum": ["dev", "prod-safe"] },
+            "description": { "type": "string" }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["seed", "reset", "capture"] } } },
+          "then": { "properties": { "tier": { "const": "dev" } } }
+        }
+      ]
+    }
+  }
+}
