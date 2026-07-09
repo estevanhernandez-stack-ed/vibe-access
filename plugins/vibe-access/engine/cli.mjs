@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { detect } from './detect.mjs';
 import { scan, writeScanArtifacts } from './scan.mjs';
 import { buildManifest, writeManifest } from './map.mjs';
+import { evaluateGaps } from './gaps.mjs';
 
 function parseArgs(argv) {
   const [cmd, ...rest] = argv;
@@ -57,7 +58,13 @@ const COMMANDS = {
     const path = writeManifest(appRoot, manifest);
     console.log(JSON.stringify({ affordances: manifest.affordances.length, path }, null, 2));
   },
-  // gaps (Task 9), verify + stamp (Task 11) extend this table.
+  gaps() {
+    const manifestPath = join(appRoot, 'agent-access.json');
+    if (!existsSync(manifestPath)) throw new Error('no manifest — run map first');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    console.log(JSON.stringify(evaluateGaps(manifest), null, 2));
+  },
+  // verify + stamp (Task 11) extend this table.
 };
 
 const handler = COMMANDS[cmd];
