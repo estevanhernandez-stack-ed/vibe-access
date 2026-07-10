@@ -33,7 +33,7 @@ Seven bugs, seven fix commits, seven pinning tests. All in `engine/adapters/fire
 ## Real app findings, handed to the app owner
 
 - **`fantasy.js` 500-not-401 class** — 7 handlers (`getTheater`, `getAvailableMovies`, `getManagerLeaderboard`, `calculateWeekendResults`, `ingestBoxOfficeData`, `getBoxOfficeData`, `calculateResultsWithRealData`) never map a missing-token error to 401, breaking the auth-gate contract every other module in the app honors. Includes the two `Data$`-suffixed routes, which only joined this class once the plugin's own method-inference bug (#7) stopped masking them behind a false 405.
-- **Pre-existing committed service-account key** — noted during recon, out of scope for this plugin's job; flagged for the app owner to remediate separately.
+- **Service-account key on disk** — recon initially reported it as committed; verified after ship: never committed (zero git history, gitignored at `.gitignore:73`, private repo). On-disk plaintext only — optional hygiene to move to env/keychain, no rotation needed. Kept here as a worked example of the false-green lesson applied to findings: verify a subagent's claim against the repo before it propagates.
 
 ## Known v0.2 gaps (plugin backlog, not fixed this session)
 
