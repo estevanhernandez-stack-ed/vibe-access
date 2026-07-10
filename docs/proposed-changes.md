@@ -3,7 +3,47 @@
 > Written by hand while `/vibe-access:evolve-access` is a v0.1 placeholder. Sources: the
 > ROROROblox agnostic-path run (2026-07-09/10, adapter-notes `dotnet-wpf-desktop.md` +
 > `.vibe-access/` artifacts in that repo) and direct builder feedback (2026-07-10).
-> Scoring: count × confidence weight {high: 3, medium: 2, low: 1}.
+> Second intake 2026-07-10 (run complete): the agent-ops arc and streamer-mode build on
+> that repo. Scoring: count × confidence weight {high: 3, medium: 2, low: 1}.
+
+## Second intake — what the completed RoRoRo run added (2026-07-10)
+
+The full arc on ROROROblox, end to end: verify run f7ebdbd1 caught update-ui/remove-ui
+fail-open (14/16) → fixed same day (16/16, run 34cf3714) → an **agent-ops surface spec**
+(`ROROROblox/docs/superpowers/specs/2026-07-10-agent-ops-surface-design.md`) designed the
+capability adds the builder actually wanted → Gap 1 landed (`stop-accounts` rpc + a
+**fail-closed capability map with startup `AssertExhaustive()`**) → manifest 16→17,
+re-verified 17/17 (run b9972f14), with Gaps 2-3 queued to take it to 20 on a stated
+"re-run scan → map → verify after each gap lands" cadence. Streamer mode (the other
+capability built that day) turned out purely in-app — zero plugin-host surface — which
+itself is a useful negative: not every capability add is an affordance add, and the
+interview should sort that early.
+
+**Refinements this drives into the existing items:**
+
+- **P0 interview — the output artifact now has a proven shape.** Not a pick-list: a
+  capability-add design in the agent-ops-spec mold — enumerated gaps, per-gap affordance
+  spec (id/kind/tier/auth/capability/description written for an agent reader,
+  destructive semantics spelled out), and the rescan-remap-reverify cadence per landed
+  gap. `:scaffold` on a product surface should culminate in that doc; the six-need
+  checklist stays the floor for dev-loop surfaces.
+- **Fail-open lint (was P2) → P1, evidence attached.** "An rpc added to the proto but
+  forgotten in the map ships wide open. That is exactly how UpdateUI and RemoveUI
+  shipped." The recommended fix shape is now known: unknown → deny, plus a startup
+  exhaustiveness assert — "the assert is the deliverable." Scan should emit this finding
+  class with that suggested shape on any capability-map stack.
+- **NEW P1 — `destructive` flag on affordances (schema, high, score 3).** The
+  stop-accounts entry had to carry "DESTRUCTIVE — closes real Roblox clients…" in prose,
+  plus an operational note (poll get-running-accounts before relaunch). MCP tool
+  annotations already have `destructiveHint`/`readOnlyHint`; the manifest is the MCP
+  embryo, so formalize `destructive: boolean` (and consider `idempotent`) per affordance.
+  Verify treats destructive affordances like seed/reset: local-only probing posture.
+- **NEW P2 — post-add cadence in the router prose.** After any capability lands, the
+  router recommends the rescan → remap → reverify loop by name (the RoRoRo spec wrote
+  this cadence by hand; the router should own it). Related note for verify semantics on
+  assert-backed surfaces: "the verify run's ability to connect is itself part of the
+  proof" — connection success is evidence when the host refuses to start on an
+  incomplete capability map.
 
 ## P0 — The capability-intent interview (builder feedback, high confidence, score 3)
 
