@@ -14,10 +14,7 @@ fail-open (14/16) → fixed same day (16/16, run 34cf3714) → an **agent-ops su
 capability adds the builder actually wanted → Gap 1 landed (`stop-accounts` rpc + a
 **fail-closed capability map with startup `AssertExhaustive()`**) → manifest 16→17,
 re-verified 17/17 (run b9972f14), with Gaps 2-3 queued to take it to 20 on a stated
-"re-run scan → map → verify after each gap lands" cadence. Streamer mode (the other
-capability built that day) turned out purely in-app — zero plugin-host surface — which
-itself is a useful negative: not every capability add is an affordance add, and the
-interview should sort that early.
+"re-run scan → map → verify after each gap lands" cadence.
 
 **Refinements this drives into the existing items:**
 
