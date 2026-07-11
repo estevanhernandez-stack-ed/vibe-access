@@ -202,4 +202,97 @@ describe('escaping (§4.3.8)', () => {
     expect(html).not.toContain('functions\\src');
     expect(html).not.toContain('functions/src');
   });
+
+  test('--no-source scrubs the JSON island and the findings, not just the visible chips', () => {
+    // The island is what Copy-as-Markdown reads, and the finding titles quote the clustered
+    // source file by name. Both have to be clean or the flag is a lie.
+    const html = render(view(WSY, { noSource: true }));
+    const island = html.split('<script type="application/json" id="surface">')[1].split('</script>')[0];
+    const data = JSON.parse(island);
+    expect(data.tools.length).toBeGreaterThan(0);
+    expect(data.tools.every((t) => t.provenance.sourceRef === null)).toBe(true);
+    expect(data.tools.every((t) => t.provenance.line === null)).toBe(true);
+    expect(JSON.stringify(data.findings)).not.toContain('functions');
+    expect(html).not.toContain('functions/src');
+    expect(html).not.toContain('functions\\\\src');
+    // ...and the un-flagged render still carries them, so the assertion means something.
+    expect(WSY_HTML).toContain('functions/src');
+  });
+
+  test('the leak flag has one owner — render throws rather than half-honoring it', () => {
+    expect(() => render(view(WSY), { noSource: true })).toThrow(/normalize/);
+    // The scrubbed view needs no flag at render: the view carries it.
+    expect(() => render(view(WSY, { noSource: true }))).not.toThrow();
+    expect(() => render(view(WSY, { noSource: true }), { noSource: true })).not.toThrow();
+  });
+});
+
+describe('print (§9) — the ink palette is token-driven, not patched per selector', () => {
+  const printBlock = (html) => html.split('@media print{')[1].split('\n@page')[0];
+
+  test('@media print redefines the tokens themselves', () => {
+    const p = printBlock(WSY_HTML);
+    for (const tok of ['--ink:#111', '--ink-2:#6B6660', '--ink-3:#6B6660', '--line:#ddd8d0',
+      '--cyan:#0F6B6B', '--magenta:#7A1F2B', '--navy:#FBFAF7', '--code-bg:#F3F1EC']) {
+      expect(p).toContain(tok);
+    }
+    expect(p).toContain('color-scheme: light');
+  });
+
+  test('no rule hard-references a screen ink or a screen accent', () => {
+    // The bug class: `.tname{color:var(--ink)}` renders near-white on white paper. Every
+    // color in the sheet is a token, so nothing can be left behind on the flip.
+    const css = WSY_HTML.split('<style>')[1].split('</style>')[0];
+    const screenOnly = ['#e9eff8', '#a9b8ce', '#71849f', '#1d3050', '#17d4fa', '#f22f89', '#0b1526', '#101e33'];
+    const decls = css.split('\n').filter((l) => !l.includes('--'));
+    for (const hex of screenOnly) {
+      expect(decls.join('\n')).not.toContain(hex);
+    }
+  });
+
+  test('the ink preview toggle actually has rules to apply', () => {
+    expect(WSY_HTML).toContain(':root[data-ink]{');
+    expect(WSY_HTML).toContain(':root[data-ink] .chip');
+    // The dead `body.ink` class toggle is gone.
+    expect(WSY_HTML).not.toContain("classList.toggle('ink')");
+  });
+
+  test('density is a screen affordance — paper prints every card whole', () => {
+    expect(WSY_HTML).toContain('@media screen{');
+    const screen = WSY_HTML.split('@media screen{')[1].split('\n}')[0];
+    expect(screen).toContain('[data-density=rows]');
+    // The route, the footer, and the micro-footer are the per-card honesty channel: a page
+    // torn out of the PDF still says what it is.
+    const p = printBlock(WSY_HTML);
+    expect(p).not.toContain('[data-density=rows]');
+    expect(p).not.toContain('.card .route{display:none}');
+  });
+
+  test('the MCP projection is a details that stays shut on paper when a native call exists', () => {
+    expect(count(WSY_HTML, '<details class="mcp pc">')).toBe(85);
+    expect(count(RORO_HTML, '<details class="mcp pc">')).toBe(17);
+    // An MCP-sourced surface has no native call, so the projection IS the payload: open.
+    expect(MCP_HTML).not.toContain('class="mcp pc"');
+    expect(MCP_HTML).toContain('<details class="mcp" open>');
+    expect(printBlock(WSY_HTML)).toContain('details:not(.pc)>*{display:block!important}');
+  });
+});
+
+describe('the filter is the print filter (§9) — it must hide the RIGHT index rows', () => {
+  test('cards and index rows are paired by identity, never by position', () => {
+    // The cards are group-clustered; the index is in surface order. Position pairing hid the
+    // wrong rows on 80 of WSY's 85 tools.
+    expect(WSY_HTML).not.toContain('if(rows[i])');
+    expect(WSY_HTML).toContain("rowFor['#'+c.id]");
+  });
+
+  test('every card id has exactly one index row pointing at it', () => {
+    for (const html of [WSY_HTML, RORO_HTML, MCP_HTML]) {
+      const ids = [...html.matchAll(/<article class="card" id="([^"]+)"/g)].map((m) => m[1]);
+      const hrefs = [...html.matchAll(/<a class="row" href="#([^"]+)"/g)].map((m) => m[1]);
+      expect(ids.length).toBeGreaterThan(0);
+      expect([...ids].sort()).toEqual([...hrefs].sort());
+      expect(new Set(hrefs).size).toBe(hrefs.length);
+    }
+  });
 });

@@ -17,7 +17,7 @@ export const TOOLVIEW_KEYS = [
 ];
 
 export const SURFACEVIEW_KEYS = [
-  'app', 'adapter', 'source', 'generatedAt', 'renderedAt', 'verifyRun',
+  'app', 'adapter', 'source', 'noSource', 'generatedAt', 'renderedAt', 'verifyRun',
   'discoveryRoute', 'counts', 'tools', 'findings', 'schemaGaps', 'axes', 'lede',
 ];
 
@@ -686,6 +686,7 @@ export function normalize(json, opts = {}) {
     app,
     adapter,
     source,
+    noSource,
     generatedAt,
     renderedAt,
     verifyRun,
@@ -942,13 +943,22 @@ function consentBlock(t) {
 }
 
 function callBlock(t, surface) {
+  // The MCP projection is a <details>. On a surface whose native call is real (http / npipe),
+  // it stays SHUT in print — it is the single biggest block on the card and the native call
+  // above it is the one a reader pastes (§10.2.6, the page budget is a shipping criterion).
+  // On an MCP-sourced surface there IS no native call, so the projection is the payload and
+  // it prints open like every other <details> (§9).
+  const real = t.transport.real;
+  const collapsible = real === 'http' || real === 'grpc-npipe' ? ' pc' : '';
   return [
     '<div class="call">',
     '<div class="call-h">Native<button class="copy no-print" type="button">copy</button></div>',
     `<pre class="code">${esc(nativeCall(t, surface))}</pre>`,
-    '<div class="call-h">MCP projection<button class="copy no-print" type="button">copy</button></div>',
+    `<details class="mcp${collapsible}"${collapsible ? '' : ' open'}>`,
+    '<summary class="call-h">MCP projection<button class="copy no-print" type="button">copy</button></summary>',
     `<pre class="code">${esc(mcpProjection(t))}</pre>`,
     '<p class="quiet">Projection — not a running server.</p>',
+    '</details>',
     '</div>',
   ].join('');
 }
@@ -1210,6 +1220,24 @@ function provenanceBand(surface, opts, bytes) {
 // embedded — a self-contained file that survives email cannot carry megabytes of woff2.
 // local() resolution picks the brand faces up where installed; everywhere else the named
 // system stack renders correctly.
+// §9 — the ink palette. ONE token block, two triggers: the on-screen ink preview and paper.
+// Every rule in the sheet reads tokens, so nothing needs a per-selector print override — the
+// class of bug where one hard-referenced `var(--ink)` renders near-white on white paper.
+const INK_TOKENS = `
+  --navy:#FBFAF7; --navy-2:#ffffff; --line:#ddd8d0;
+  --ink:#111; --ink-2:#6B6660; --ink-3:#6B6660;
+  --cyan:#0F6B6B; --magenta:#7A1F2B;
+  --code-bg:#F3F1EC; --hatch:rgba(107,102,96,.16);
+  color-scheme: light;
+`;
+
+// The two ink rules that are not a token swap: the chip word goes full ink for readability,
+// and the DESTRUCTIVE fill keeps its knocked-out white on oxblood.
+const INK_RULES = (sel) => `
+${sel} .chip{color:var(--ink)}
+${sel} .chip.filled{color:#fff;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+`;
+
 const CSS = `
 :root{
   --font-ui:'Space Grotesk','Segoe UI',system-ui,-apple-system,sans-serif;
@@ -1217,6 +1245,7 @@ const CSS = `
   --navy:#0b1526; --navy-2:#101e33; --line:#1d3050;
   --ink:#e9eff8; --ink-2:#a9b8ce; --ink-3:#71849f;
   --cyan:#17d4fa; --magenta:#f22f89;
+  --code-bg:#08111f; --hatch:rgba(113,132,159,.12);
   color-scheme: dark;
 }
 *{box-sizing:border-box}
@@ -1270,11 +1299,12 @@ input[type=search]{font-family:var(--font-mono);font-size:.75rem;background:var(
 .ann{border:1px solid var(--line);border-radius:2px;padding:6px 8px;font-size:.72rem}
 .ann-k{display:block;color:var(--ink-3);letter-spacing:.08em}
 .ann.derived{border-style:dashed;color:var(--ink-2)}
-.ann.unclaimed{border-style:dashed;color:var(--ink-3);background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(113,132,159,.12) 5px,rgba(113,132,159,.12) 6px)}
+.ann.unclaimed{border-style:dashed;color:var(--ink-3);background:repeating-linear-gradient(45deg,transparent,transparent 5px,var(--hatch) 5px,var(--hatch) 6px)}
 .why{display:block;color:var(--ink-3);font-size:.66rem;margin-top:2px}
 .cap{color:var(--cyan)}
 .call-h{display:flex;justify-content:space-between;align-items:center;font-size:.68rem;letter-spacing:.1em;color:var(--ink-3);margin-top:8px}
-pre.code{background:#08111f;border:1px solid var(--line);border-radius:3px;padding:10px;font-size:.76rem;overflow-x: auto;white-space:pre-wrap;overflow-wrap: anywhere;margin:4px 0}
+summary.call-h{cursor:pointer}
+pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:3px;padding:10px;font-size:.76rem;overflow-x: auto;white-space:pre-wrap;overflow-wrap: anywhere;margin:4px 0}
 .card-f{margin-top:12px;padding-top:8px;border-top:1px solid var(--line);font-size:.72rem;color:var(--ink-2)}
 .vclass{letter-spacing:.08em}
 .v-open,.v-error{color:var(--magenta)}
@@ -1283,30 +1313,69 @@ pre.code{background:#08111f;border:1px solid var(--line);border-radius:3px;paddi
 dl dt{color:var(--cyan);margin-top:12px;font-size:.9rem}
 dl dd{margin:2px 0 0;color:var(--ink-2);font-size:.88rem}
 .print-filter{display:none}
-[data-density=rows] .card .block,[data-density=rows] .card .route,[data-density=rows] .card .card-f,[data-density=rows] .card .prereq{display:none}
-[data-density=rows] .card.open .block,[data-density=rows] .card.open .route,[data-density=rows] .card.open .card-f{display:block}
 .hidden{display:none}
+
+/* Density is a SCREEN affordance only. On paper every card prints whole — the route line, the
+   footer (sourceRef · origin · verify class) and the 8px micro-footer are the per-card honesty
+   channel, and a page torn out of the PDF still has to say what it is (§6.2). The ink preview
+   is a print preview, so it opts out of density too. */
+@media screen{
+  :root[data-density=rows]:not([data-ink]) .card .block,
+  :root[data-density=rows]:not([data-ink]) .card .route,
+  :root[data-density=rows]:not([data-ink]) .card .card-f,
+  :root[data-density=rows]:not([data-ink]) .card .prereq{display:none}
+  :root[data-density=rows]:not([data-ink]) .card.open .block,
+  :root[data-density=rows]:not([data-ink]) .card.open .route,
+  :root[data-density=rows]:not([data-ink]) .card.open .card-f{display:block}
+}
+
+/* The ink preview: the same palette paper gets, on screen, before anyone hits print. */
+:root[data-ink]{${INK_TOKENS}}
+${INK_RULES(':root[data-ink]')}
+
 @media print{
-  :root{color-scheme: light}
-  body{background:#FBFAF7;color:#111}
+  :root{${INK_TOKENS}}
+${INK_RULES(':root')}
+  body{line-height:1.4}
   main{max-width:none;padding:0}
   .no-print{display:none!important}
-  h2{color:#0F6B6B;border-color:#ddd8d0}
-  .sub,.freshness,.quiet,.mini,.tmpl,.ann-k,.why,.micro{color:#6B6660}
-  .lede p{border-left-color:#0F6B6B}
-  .card{background:#fff;border-color:#ddd8d0}
-  pre.code{background:#F3F1EC;border-color:#ddd8d0;white-space:pre-wrap;overflow-wrap: anywhere}
-  .chip{border-color:#6B6660;color:#111}
-  .chip.filled{background:#7A1F2B;color:#fff;border-color:#7A1F2B;print-color-adjust:exact;-webkit-print-color-adjust:exact}
-  .chip.risk,.slug,.v-open,.v-error,.qmark{color:#7A1F2B}
-  .verb,.cap,.prereq a,dl dt{color:#0F6B6B}
+  pre.code{white-space:pre-wrap;overflow-wrap: anywhere}
   .card,.params,.group-band{break-inside:avoid}
   h3{break-after:avoid}
   [data-band=index]{break-before:page}
-  .card .block{display:block!important}
-  details>*{display:block!important}
-  body.filtered .print-filter{display:block;border:1px solid #7A1F2B;color:#7A1F2B;padding:6px 8px}
+  details:not(.pc)>*{display:block!important}
+  details.pc>summary::marker,details.pc>summary::-webkit-details-marker{color:var(--ink-3)}
+  body.filtered .print-filter{display:block;border:1px solid var(--magenta);color:var(--magenta);padding:6px 8px}
   a[href^="http"]::after{content:" (" attr(href) ")"}
+
+  /* Page budget (§10.2.6): 85 affordances land under 40 letter pages, and break-inside:avoid
+     means a card taller than half a page costs a whole one. The cuts are density, never
+     information — every block keeps its label and its words, and THE CALL keeps every line
+     a reader pastes. */
+  body{line-height:1.3}
+  .card{padding:5px 8px;margin:4px 0;font-size:.84rem;line-height:1.25}
+  .route{margin:1px 0;font-size:.76rem}
+  .block{margin-top:2px}
+  .block h4{display:inline;margin-right:6px;font-size:.62rem}
+  .block p{display:inline;margin:0}
+  .block p+p{margin-left:6px}
+  /* The short blocks flow as one labeled run: every label and every word survives, the four
+     blank lines between them do not. */
+  .block[data-block=when-to-use],.block[data-block=when-not-to-use],
+  .block[data-block=input],.block[data-block=output]{display:inline;margin:0 10px 0 0}
+  .call-h{margin-top:2px;font-size:.6rem}
+  .anns{display:block;font-size:.7rem}
+  .ann{display:inline;border:0;padding:0;background:none}
+  .ann+.ann::before{content:" · "}
+  .ann-k{display:inline}
+  .ann-k::after{content:" "}
+  .ann .why{display:none}
+  .index .row{padding:1px 4px}
+  .group-band{margin-top:14px;padding-top:6px}
+  .params th,.params td{padding:1px 6px 1px 0}
+  pre.code{padding:4px;margin:2px 0;font-size:.66rem;line-height:1.3}
+  .card-f{margin-top:4px;padding-top:3px;font-size:.68rem}
+  .micro{margin-top:1px}
 }
 @page{size:letter portrait;margin:14mm 12mm}
 `;
@@ -1315,11 +1384,16 @@ const JS = `
 (function(){
   var root=document.documentElement;
   var b=document.getElementById('theme');
-  if(b)b.addEventListener('click',function(){root.dataset.ink=root.dataset.ink?'':'1';document.body.classList.toggle('ink');});
+  if(b)b.addEventListener('click',function(){if(root.dataset.ink)root.removeAttribute('data-ink');else root.dataset.ink='1';});
   var p=document.getElementById('pdf');
   if(p)p.addEventListener('click',function(){window.print();});
   var cards=Array.prototype.slice.call(document.querySelectorAll('.card'));
   var rows=Array.prototype.slice.call(document.querySelectorAll('.index .row'));
+  // The index is emitted in surface order; the cards are group-clustered. Pair them by
+  // identity, never by position — a filter that hides the wrong index rows is a lie on the
+  // one page built to stop lies.
+  var rowFor={};
+  rows.forEach(function(r){var h=r.getAttribute('href');if(h&&!Object.prototype.hasOwnProperty.call(rowFor,h))rowFor[h]=r;});
   var q=document.getElementById('q');
   var active={};
   function match(c){
@@ -1334,10 +1408,11 @@ const JS = `
   }
   function apply(){
     var shown=0;
-    cards.forEach(function(c,i){
+    cards.forEach(function(c){
       var ok=match(c);
       c.classList.toggle('hidden',!ok);
-      if(rows[i])rows[i].classList.toggle('hidden',!ok);
+      var r=rowFor['#'+c.id];
+      if(r)r.classList.toggle('hidden',!ok);
       if(ok)shown++;
     });
     var on=Object.keys(active).filter(function(k){return active[k];});
@@ -1361,9 +1436,10 @@ const JS = `
   if(cards.length>40)root.dataset.density='rows';
   cards.forEach(function(c){c.querySelector('.card-h').addEventListener('click',function(){c.classList.toggle('open');});});
   Array.prototype.forEach.call(document.querySelectorAll('.copy'),function(btn){
-    btn.addEventListener('click',function(){
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
       var pre=btn.closest('.call-h').nextElementSibling;
-      if(navigator.clipboard)navigator.clipboard.writeText(pre.textContent);
+      if(pre&&navigator.clipboard)navigator.clipboard.writeText(pre.textContent);
     });
   });
   var md=document.getElementById('md');
@@ -1379,11 +1455,13 @@ const JS = `
     var btn=document.querySelector('.f[data-filter="'+k+'"]');
     if(btn){active[k]=true;btn.classList.add('on');}
   });apply();}
+  // Every details opens for print EXCEPT .pc — the MCP projection on a surface that already
+  // prints a real native call (see callBlock).
   window.addEventListener('beforeprint',function(){
-    Array.prototype.forEach.call(document.querySelectorAll('details'),function(x){x.open=true;});
+    Array.prototype.forEach.call(document.querySelectorAll('details:not(.pc)'),function(x){x.open=true;});
   });
   if(window.matchMedia){var m=window.matchMedia('print');if(m.addListener)m.addListener(function(x){
-    if(x.matches)Array.prototype.forEach.call(document.querySelectorAll('details'),function(y){y.open=true;});
+    if(x.matches)Array.prototype.forEach.call(document.querySelectorAll('details:not(.pc)'),function(y){y.open=true;});
   });}
 })();
 `;
@@ -1403,11 +1481,24 @@ const jsonIsland = (surface) =>
 
 /**
  * render(surfaceView, opts) -> one self-contained HTML document.
- * opts: { terse?: boolean, noSource?: boolean }
+ * opts: { terse?: boolean }
  * Pure and deterministic — every clock value arrives inside surfaceView (D24).
+ *
+ * §3.4 — --no-source is a leak flag, and a half-honored leak flag is worse than none, so it
+ * has exactly ONE owner: normalize(). The scrub has to happen before findings are built (their
+ * titles quote the clustered source file by name) and it has to reach the JSON island, which
+ * the Copy-as-Markdown handler reads straight out of. Passing the flag here instead is a
+ * caller bug, and it throws rather than shipping a file tree it promised not to.
  */
 export function render(surfaceView, opts = {}) {
-  const o = { terse: opts.terse === true, noSource: opts.noSource === true };
+  if (opts.noSource === true && surfaceView.noSource !== true) {
+    throw new Error(
+      'render(): --no-source is applied at normalize(json, { noSource: true }), not at render. ' +
+        'The findings and the JSON island are built in the normalizer; scrubbing here would ' +
+        'leave source paths baked into finding titles.'
+    );
+  }
+  const o = { terse: opts.terse === true, noSource: surfaceView.noSource === true };
   const island = jsonIsland(surfaceView);
   const title = `${surfaceView.app ?? 'agent surface'} — agent access`;
   return [
