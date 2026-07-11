@@ -15,4 +15,21 @@ Load skills/guide/SKILL.md. Requires .vibe-access/state/inventory.json (else rec
    an agent reader who has never seen the source. Edit agent-access.json descriptions
    directly; they survive re-map via overrides only if moved there, so prefer
    overrides.description for anything hand-tuned.
-4. Recommend `/vibe-access:scaffold` (if gaps) or `/vibe-access:verify` next.
+4. Fill the three authored fields where they apply. Map never generates them; they
+   survive re-map on both merge paths.
+   - **`authDetail`** (string, optional) — the real consent unit, because
+     `none|session|token` cannot express capability-based consent. The convention: EITHER
+     the capability string the route requires, verbatim (`host.commands.stop-accounts`),
+     OR one sentence naming the mechanism ("Firebase ID token via `Authorization:
+     Bearer`"). Do not put it in the description — a re-map regenerates templated
+     descriptions and the consent story goes with them.
+   - **`destructive`** (boolean, optional) — true when calling it breaks things
+     (kills sessions, wipes state, charges money). Absent means UNCLAIMED, not false;
+     claim it explicitly. Orthogonal to tier: tier answers "may agents touch prod,"
+     destructive answers "does it break things." A `destructive: true` affordance is
+     never auto-probed by verify.
+   - **`overrides.kind`** (optional) — when the derived kind is wrong (every gRPC call
+     is a POST, so read-only rpcs derive `act`). Overriding to `seed`/`reset`/`capture`
+     requires `overrides.tier: "dev"` alongside it — seed/reset/capture can never be
+     prod-safe, and the schema refuses it mechanically, override or not.
+5. Recommend `/vibe-access:scaffold` (if gaps) or `/vibe-access:verify` next.

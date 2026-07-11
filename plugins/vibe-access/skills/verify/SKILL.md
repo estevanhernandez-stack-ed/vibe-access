@@ -22,3 +22,26 @@ FAILURE of the manifest's description quality. Fix the description, then retry.
 4. Report per-affordance results from the dated report. Failures get a one-line
    diagnosis each. The layer is done when every affordance is pass — say so plainly
    when it is, and say what is NOT verified when it is not.
+
+## The agnostic path — you are the enforcement
+
+On an app with no adapter, the engine cannot probe: you drive the affordances with a
+hand-written driver and stamp results yourself
+(`node engine/cli.mjs stamp <id> <pass|fail> --run <runId> --app <target>`). The probe
+matrix `runVerify` enforces on the adapter path is, on this path, YOUR instruction set.
+It is a convention here, not a guarantee — nothing in the engine catches you breaking it.
+
+| Kind / field | Local base URL | Non-local base URL |
+|---|---|---|
+| `capture` | never probed — `pending-agent`, driven by an agent | `pending-agent` |
+| `seed` / `reset` | probe it | **never probe.** No `--force` escape, today or ever |
+| `destructive: true` | **never probe — not even locally.** "Local" is not "consequence-free": a destructive route on the dev host still kills real things | **never probe.** No escape |
+
+Do not stamp a row you did not actually drive. A destructive affordance stays at its
+last honest stamp (or `unverified`) until a human or an agent deliberately executes it.
+
+A held gate is not only HTTP 401/403 — on non-HTTP transports it arrives as
+`PermissionDenied`, `Unauthenticated`, or `FailedPrecondition`. A held gate is a PASS
+of the access layer: the affordance is reachable and the gate works. Count it as
+gate-held, never as an error, and never fold a handle-level gate-hold into the same
+bucket as a transport-level one.

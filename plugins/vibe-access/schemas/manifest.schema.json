@@ -76,7 +76,12 @@
       "allOf": [
         {
           "if": { "properties": { "kind": { "enum": ["seed", "reset", "capture"] } } },
-          "then": { "properties": { "tier": { "const": "dev" } } }
+          "then": {
+            "properties": {
+              "tier": { "const": "dev" },
+              "overrides": { "properties": { "tier": { "const": "dev" } } }
+            }
+          }
         },
         {
           "if": {

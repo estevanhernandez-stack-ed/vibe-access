@@ -70,6 +70,14 @@ describe('schema: the twin refusal branch sees the override', () => {
       expect(validateManifest(bad).valid).toBe(false);
     });
 
+    // the escape the twin branch does NOT cover: a raw seed/reset/capture kind whose
+    // overrides.tier smuggles prod-safe back in. cli.mjs verify JSON.parses without
+    // validateManifest, so the schema is the only layer standing on the agnostic path.
+    test(`rejects kind "${kind}" when overrides.tier is prod-safe`, () => {
+      const bad = withFirst({ kind, tier: 'dev', overrides: { tier: 'prod-safe' } });
+      expect(validateManifest(bad).valid).toBe(false);
+    });
+
     test(`accepts overrides.kind "${kind}" at effective tier dev`, () => {
       const ok = withFirst({ kind: 'act', tier: 'dev', overrides: { kind, tier: 'dev' } });
       expect(validateManifest(ok).errors).toEqual([]);
@@ -118,7 +126,17 @@ describe('map: overrides.kind bakes through', () => {
     const second = remap(first);
     expect(second.affordances[0].kind).toBe('seed');
     expect(second.affordances[0].tier).toBe('dev');
+    // the generated description names the EFFECTIVE kind — it is what a cold agent reads
+    expect(second.affordances[0].description).toBe('Seed: POST /rpc/ListThings');
     expect(validateManifest(second).errors).toEqual([]);
+  });
+
+  test('the generated description labels every effective kind honestly', () => {
+    for (const [kind, label] of [['read', 'Read'], ['reset', 'Reset'], ['capture', 'Capture']]) {
+      const first = firstMap();
+      first.affordances[0].overrides = { kind, tier: 'dev' };
+      expect(remap(first).affordances[0].description).toBe(`${label}: POST /rpc/ListThings`);
+    }
   });
 
   test('assertTierLegal without an id still throws the mechanical refusal', () => {

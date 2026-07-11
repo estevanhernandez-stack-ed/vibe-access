@@ -19,6 +19,10 @@ export const effectiveKind = (affordance) => affordance?.overrides?.kind ?? affo
 
 const kebab = (s) => s.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 
+// the generated description is what the visualizer renders as PURPOSE and what a cold
+// agent reads — it must name the EFFECTIVE kind, not collapse everything non-read to "Act".
+const KIND_LABEL = { read: 'Read', act: 'Act', seed: 'Seed', reset: 'Reset', capture: 'Capture' };
+
 // carried forward verbatim from `previous` on BOTH merge paths — authored fields the
 // map has no business regenerating (§8.2, §8.3)
 const carryAuthored = (prev) => ({
@@ -41,7 +45,7 @@ export function buildManifest(inventory, { previous = null, baseUrls, now } = {}
     assertTierLegal(kind, tier, id);
     return {
       id,
-      description: overrides?.description ?? `${kind === 'read' ? 'Read' : 'Act'}: ${route.method} ${route.path}`,
+      description: overrides?.description ?? `${KIND_LABEL[kind] ?? 'Act'}: ${route.method} ${route.path}`,
       tier,
       kind, // bake-through: the effective value lands here; overrides.kind stays as re-map memory
       transport: { type: 'http', method: route.method, path: route.path },
