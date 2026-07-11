@@ -55,6 +55,7 @@
         "detail": "host 1.9.0, multi-instance On"
       },
       "overrides": {
+        "kind": "read",
         "description": "Read RoRoRo's version and multi-instance state (On / Off / Error). Free read — no handshake or consent required; the per-user pipe ACL is the only gate."
       }
     },
@@ -80,6 +81,7 @@
         "detail": "0 running account(s)"
       },
       "overrides": {
+        "kind": "read",
         "description": "Read the running Roblox clients RoRoRo launched: account id (Guid), Roblox user id, display name, PID, and place id/name from presence tracking (0 / empty means unknown — treat as no game info, never a game named \"\"). Free read — no handshake or consent required."
       }
     },
@@ -105,6 +107,7 @@
         "detail": "auth-gate-held (PermissionDenied: Plugin 'vibe-access-verify' has not been granted 'host.events.account-launched'.)"
       },
       "overrides": {
+        "kind": "read",
         "description": "Server-streaming subscription: one event per account launch (ids, display name, PID, timestamp). Place identity often lags at launch time — re-query get-running-accounts for fresh identity. Requires consent to capability host.events.account-launched."
       }
     },
@@ -130,6 +133,7 @@
         "detail": "auth-gate-held (PermissionDenied: Plugin 'vibe-access-verify' has not been granted 'host.events.account-exited'.)"
       },
       "overrides": {
+        "kind": "read",
         "description": "Server-streaming subscription: one event per account exit (account id, Roblox user id, PID, exit timestamp). Requires consent to capability host.events.account-exited."
       }
     },
@@ -155,6 +159,7 @@
         "detail": "auth-gate-held (PermissionDenied: Plugin 'vibe-access-verify' has not been granted 'host.events.mutex-state-changed'.)"
       },
       "overrides": {
+        "kind": "read",
         "description": "Server-streaming subscription: multi-instance mutex state transitions (On / Off / Error). Requires consent to capability host.events.mutex-state-changed."
       }
     },
@@ -230,6 +235,7 @@
         "detail": "auth-gate-held (PermissionDenied: Plugin 'vibe-access-verify' has not been granted 'host.queries.current-server'.)"
       },
       "overrides": {
+        "kind": "read",
         "description": "Read the most recently launched private server: ready-to-share URL, place name/id, launch timestamp. present=false when no private server has been launched this session. Requires consent to capability host.queries.current-server."
       }
     },
@@ -255,6 +261,7 @@
         "detail": "auth-gate-held (PermissionDenied: Plugin 'vibe-access-verify' has not been granted 'host.queries.account-activity'.)"
       },
       "overrides": {
+        "kind": "read",
         "description": "Read per-account idle state: last-activity timestamp and seconds since, per running account. Timestamps only — never input contents. Requires consent to capability host.queries.account-activity."
       }
     },

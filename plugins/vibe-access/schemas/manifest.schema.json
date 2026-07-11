@@ -48,6 +48,8 @@
         "input": { "type": ["object", "null"] },
         "output": { "type": ["object", "null"] },
         "auth": { "enum": ["none", "session", "token"] },
+        "authDetail": { "type": "string", "minLength": 1 },
+        "destructive": { "type": "boolean" },
         "sourceRef": { "type": "string" },
         "origin": { "enum": ["existing", "scaffolded"] },
         "verified": {
@@ -66,6 +68,7 @@
           "additionalProperties": false,
           "properties": {
             "tier": { "enum": ["dev", "prod-safe"] },
+            "kind": { "enum": ["read", "act", "seed", "reset", "capture"] },
             "description": { "type": "string" }
           }
         }
@@ -74,6 +77,23 @@
         {
           "if": { "properties": { "kind": { "enum": ["seed", "reset", "capture"] } } },
           "then": { "properties": { "tier": { "const": "dev" } } }
+        },
+        {
+          "if": {
+            "required": ["overrides"],
+            "properties": {
+              "overrides": {
+                "required": ["kind"],
+                "properties": { "kind": { "enum": ["seed", "reset", "capture"] } }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "tier": { "const": "dev" },
+              "overrides": { "properties": { "tier": { "const": "dev" } } }
+            }
+          }
         }
       ]
     }

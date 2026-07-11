@@ -1,4 +1,5 @@
 import { validateVerifyRun } from './schema.mjs';
+import { effectiveKind } from './map.mjs';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1']);
 
@@ -44,11 +45,20 @@ export async function runVerify(manifest, { baseUrl, force = false, fetchImpl = 
   }
   const results = [];
   for (const a of manifest.affordances) {
-    if (a.kind === 'capture') {
+    // read through overrides.kind — a hand-edited manifest never went through map (§8.1)
+    const kind = effectiveKind(a);
+    if (kind === 'capture') {
       results.push({ affordanceId: a.id, status: 'pending-agent', httpStatus: null, detail: 'capture-kind: agent drives Playwright, then stamps' });
       continue;
     }
-    if ((a.kind === 'seed' || a.kind === 'reset') && !isLocalUrl(baseUrl)) {
+    // §8.3 — declared-destructive is never auto-probed, local or not. "Local" is not
+    // "consequence-free", and no engine flag authorizes it: executing a destructive path
+    // is agent/hand-driver territory. `skipped` (not `pending-agent`) so a prior stamp survives.
+    if (a.destructive === true) {
+      results.push({ affordanceId: a.id, status: 'skipped', httpStatus: null, detail: 'destructive: never auto-probed — agent or hand-driver territory' });
+      continue;
+    }
+    if ((kind === 'seed' || kind === 'reset') && !isLocalUrl(baseUrl)) {
       results.push({ affordanceId: a.id, status: 'skipped', httpStatus: null, detail: 'seed/reset never exercised non-locally' });
       continue;
     }
