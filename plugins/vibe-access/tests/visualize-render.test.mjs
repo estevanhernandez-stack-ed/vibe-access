@@ -278,6 +278,208 @@ describe('print (§9) — the ink palette is token-driven, not patched per selec
   });
 });
 
+// ================================================================ the judge-panel grafts (§6, D2)
+// The acceptance bar is not "complete" — it is SCANNABLE at 85 tools.
+
+describe('graft 1 — density: compact rows are the DEFAULT above 40 tools (D5)', () => {
+  test('the default is rendered into the markup, not applied by a script after paint', () => {
+    // A JS-applied default is a flash of 85 uncollapsed cards, and it is nothing at all with
+    // scripting off. The renderer knows the count; it says so in the attribute.
+    expect(WSY_HTML).toContain('<html lang="en" data-density="rows">');
+    expect(RORO_HTML).toContain('<html lang="en">');
+    expect(MCP_HTML).not.toContain('data-density="rows"');
+    // ...and the JS no longer sets it, so there is exactly one owner of the default.
+    expect(WSY_HTML).not.toContain('cards.length>40');
+  });
+
+  test('density state rides in the URL hash, like every other view state', () => {
+    expect(WSY_HTML).toContain("d=rows");
+    expect(WSY_HTML).toContain('hashchange');
+  });
+});
+
+describe('graft 2 — chips only when the fact is TRUE (D10)', () => {
+  const chipsIn = (html) => [...html.matchAll(/<span class="chip[^"]*"[^>]*>([^<]+)<\/span>/g)].map((m) => m[1]);
+
+  test('a chip never states a negative — "not destructive" is noise, not signal', () => {
+    for (const html of [WSY_HTML, RORO_HTML, MCP_HTML]) {
+      for (const c of chipsIn(html)) {
+        expect(c).not.toMatch(/\bnot\b|\bno\b|false/i);
+      }
+    }
+  });
+
+  test('a clean card carries an empty rail and is visually boring on purpose', () => {
+    // 85 cards, 15 open, 1 dev-only, a handful privilege-shaped: most rails are empty.
+    expect(count(WSY_HTML, '<span class="rail"></span>')).toBeGreaterThan(30);
+  });
+
+  test('OPEN is chipped only on the auth-none cards, never on the gated ones', () => {
+    const open = view(WSY).tools.filter((t) => t.consent.mode === 'none').length;
+    expect(open).toBe(15);
+    expect(count(WSY_HTML, '○ OPEN')).toBe(open);
+  });
+});
+
+describe('graft 3 — print inks + DESTRUCTIVE scarcity (D10, D11)', () => {
+  const cssOf = (html) => html.split('<style>')[1].split('</style>')[0];
+
+  test('the danger ink is spent ONLY on danger — if everything is red, nothing is', () => {
+    // #7A1F2B oxblood on paper / magenta on screen is a scarce resource. It belongs to the
+    // destructive chip, the failed/open verify classes, and the risk banners. An absence slug
+    // is not a danger; 253 red absence slugs on the WeSeeYou page would drown the two marks
+    // the reader actually has to see.
+    const allowed = [
+      '.chip.filled', '.chip.risk', '.banner.risk', '.v-open,.v-error',
+      'body.filtered .print-filter',
+    ];
+    const offenders = cssOf(WSY_HTML)
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.includes('var(--magenta)') && !l.startsWith('--'))
+      .filter((l) => !allowed.some((sel) => l.startsWith(sel)));
+    expect(offenders).toEqual([]);
+  });
+
+  test('DESTRUCTIVE is the only FILLED chip in the entire document', () => {
+    for (const html of [WSY_HTML, RORO_HTML, MCP_HTML]) {
+      for (const m of html.matchAll(/<span class="chip filled"[^>]*>([^<]+)<\/span>/g)) {
+        expect(m[1]).toContain('DESTRUCTIVE');
+      }
+    }
+  });
+
+  test('the filled chip is RARE — one loud mark across 85 cards, not a badge rail', () => {
+    expect(count(WSY_HTML, 'class="chip filled"')).toBeLessThanOrEqual(2);
+    expect(count(RORO_HTML, 'class="chip filled"')).toBeLessThanOrEqual(3);
+    expect(count(RORO_HTML, 'class="chip filled"')).toBeGreaterThan(0);
+  });
+});
+
+describe('graft 4 — <wbr> in long identifiers and paths', () => {
+  test('CamelCase rpc names wrap at token-internal boundaries, not mid-token', () => {
+    expect(RORO_HTML).toContain('Subscribe<wbr>Mutex<wbr>State<wbr>Changed');
+    // The path separators break too, so /rororo.plugin.v1.RoRoRoHost/… never blows the measure.
+    expect(RORO_HTML).toContain('rororo.<wbr>plugin.<wbr>v1.');
+    expect(WSY_HTML).toContain('<wbr>');
+  });
+});
+
+describe('graft 5 — {?} is the unknown parameter, never a bare glob', () => {
+  test('a `*` segment renders as a footnoted {?} glyph in the route line', () => {
+    expect(WSY_HTML).toContain('<span class="qmark"');
+    expect(WSY_HTML).toContain('{?}');
+    expect(WSY_HTML).toMatch(/class="qmark" title="[^"]*unnamed path parameter/);
+    // Never a bare asterisk in a rendered route.
+    expect(WSY_HTML).not.toMatch(/<code>[^<]*\*[^<]*<\/code>/);
+  });
+
+  test('the glyph is styled, not danger-inked — it is a gap, not a fire', () => {
+    const css = WSY_HTML.split('<style>')[1].split('</style>')[0];
+    expect(css).toMatch(/\.qmark\{[^}]*underline/);
+    expect(css).not.toMatch(/\.qmark\{[^}]*var\(--magenta\)/);
+  });
+});
+
+describe('graft 6 — collapse the duplicate slugs (D7)', () => {
+  test('an empty block is ONE compact labeled line, not a full-height frame', () => {
+    // 85 cards × 4 near-always-empty blocks = the wall this graft exists to kill.
+    expect(WSY_HTML).not.toContain('<p class="slug">Not stated.</p>');
+    expect(count(WSY_HTML, 'class="block empty"')).toBeGreaterThan(200);
+    const css = WSY_HTML.split('<style>')[1].split('</style>')[0];
+    expect(css).toContain('.block.empty{display:inline-block');
+    expect(css).toContain('.block.empty h4{display:inline');
+  });
+
+  test('the absence is stated ONCE at surface level, not 170 times on the cards', () => {
+    const v = view(WSY);
+    expect(v.counts.templated).toBe(84);
+    expect(v.counts.withInputSchema).toBe(0);
+    expect(count(WSY_HTML, 'absence-note"')).toBe(1);
+    expect(WSY_HTML).toContain('84 of 85 descriptions are scan templates');
+    expect(WSY_HTML).toContain('0 of 85 declare an input schema');
+    // The to-do sentence rides with the surface statement — once, not on every card.
+    expect(count(WSY_HTML, '/vibe-access:describe')).toBe(1);
+  });
+
+  test('the consent epigram is stated once too, not on 70 of 85 cards', () => {
+    // The auth MODE is per-card — "can I call this" is in-ask. The sentence behind it is not.
+    expect(count(WSY_HTML, 'is not "no capability required."')).toBe(1);
+    expect(WSY_HTML).toContain('data-band="how-to-read"');
+    expect(count(WSY_HTML, 'mechanism not stated in the surface.')).toBeGreaterThan(50);
+    expect(WSY_HTML).not.toContain('class="slug"');
+  });
+
+  test('the card still says it — one muted line each, and the template still prints (D8)', () => {
+    expect(count(WSY_HTML, 'No authored description — this is the scan template')).toBe(84);
+    expect(WSY_HTML).toContain('class="tmpl"');
+    expect(count(WSY_HTML, 'class="block empty" data-block="input"')).toBeGreaterThan(50);
+  });
+});
+
+describe('graft 7 — --terse and --no-source', () => {
+  test('--terse drops the machine template body and keeps the slug', () => {
+    const terse = render(view(WSY), { terse: true });
+    expect(terse).toContain('UNDOCUMENTED');
+    expect(terse).toContain('No authored description — this is the scan template');
+    expect(terse).not.toContain('class="tmpl"');
+    // Everything else survives: the call a reader pastes is not noise.
+    expect(count(terse, 'class="card"')).toBe(85);
+    expect(terse).toContain('curl -X POST');
+  });
+
+  test('--no-source drops the micro-footer file names too, not just the chips', () => {
+    const html = render(view(WSY, { noSource: true }));
+    expect(html).not.toContain('.js:');
+    expect(html).toContain('class="micro"');
+  });
+});
+
+describe('graft 8 — the URL hash is the deep link', () => {
+  test('every card carries a permalink anchor', () => {
+    const v = view(WSY);
+    expect(count(WSY_HTML, 'class="anchor no-print"')).toBe(v.tools.length);
+    expect(WSY_HTML).toContain('title="link to this tool"');
+  });
+
+  test('a #tool-… hash opens and reveals that card, even in compact density', () => {
+    // Without this, "send me the link to get-challenges" lands the reader on a collapsed row.
+    expect(WSY_HTML).toContain("indexOf('#tool-')");
+    expect(WSY_HTML).toContain("scrollIntoView");
+    expect(WSY_HTML).toContain("classList.add('open')");
+  });
+
+  test('filter state and tool anchors share the hash without clobbering each other', () => {
+    expect(WSY_HTML).toContain('f=');
+    expect(WSY_HTML).toContain('d=rows');
+    expect(WSY_HTML).toContain('q=');
+  });
+});
+
+describe('graft 9 — Save as PDF, and the print filter (D12)', () => {
+  test('the Save-as-PDF affordance is a button, and it prints', () => {
+    expect(WSY_HTML).toContain('id="pdf"');
+    expect(WSY_HTML).toContain('Save as PDF');
+    expect(WSY_HTML).toContain('window.print()');
+    expect(WSY_HTML).toContain('class="controls no-print"');
+  });
+
+  test('the filter IS the print filter — filtered-out cards are display:none and paper agrees', () => {
+    const css = WSY_HTML.split('<style>')[1].split('</style>')[0];
+    expect(css).toContain('.hidden{display:none}');
+    const print = WSY_HTML.split('@media print{')[1].split('\n@page')[0];
+    // Nothing in the print block resurrects a hidden card — that would make the PDF lie.
+    expect(print).not.toMatch(/\.hidden\{display:(?!none)/);
+    expect(print).toContain('body.filtered .print-filter{display:block');
+  });
+
+  test('the FILTERED VIEW banner keeps a filtered artifact honest', () => {
+    expect(WSY_HTML).toContain('class="print-filter"');
+    expect(WSY_HTML).toContain('FILTERED VIEW');
+    expect(WSY_HTML).toContain("classList.toggle('filtered'");
+  });
+});
+
 describe('the filter is the print filter (§9) — it must hide the RIGHT index rows', () => {
   test('cards and index rows are paired by identity, never by position', () => {
     // The cards are group-clustered; the index is in surface order. Position pairing hid the

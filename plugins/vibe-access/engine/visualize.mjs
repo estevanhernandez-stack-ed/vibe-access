@@ -725,11 +725,16 @@ const wbr = (s) =>
 
 const slug = (s) => String(s ?? '').replace(/[^a-zA-Z0-9._-]/g, '-');
 
-// §6.2 block 4 — a `*` segment is not a glob and never renders as one.
+// §6.2 block 4 — a `*` segment is not a glob and never renders as one. The glyph is styled and
+// footnoted, not danger-inked: an unknown parameter is a gap, not a fire (D11 keeps the oxblood
+// for DESTRUCTIVE and the failed/open verify classes).
+const QMARK =
+  '<span class="qmark" title="unnamed path parameter — nothing in the surface says what goes here; see HOW TO READ THIS">{?}</span>';
+
 const routeLine = (path) =>
   String(path ?? '')
     .split('/')
-    .map((seg) => (seg === '*' ? '<span class="qmark">{?}</span>' : wbr(seg)))
+    .map((seg) => (seg === '*' ? QMARK : wbr(seg)))
     .join('/<wbr>');
 
 const SENTENCE_SPLIT = /(?<=[.!?])\s+/;
@@ -839,27 +844,33 @@ function mcpProjection(t) {
 
 // ---------------------------------------------------------------- blocks
 
-const notStated = '<p class="slug">Not stated.</p>';
+// D7 — the duplicate-slug wall dies here. A block with nothing in it is ONE compact labeled
+// line (`.block.empty`, rendered inline), muted, never a full-height red frame repeated 170
+// times. The rate itself is stated ONCE at surface level (the absence note in the index band),
+// and the hole is kept in full only where it is actionable: inside THE CALL.
+const filled = (html) => ({ html, empty: false });
+const absent = (words) => ({ html: `<span class="none">${esc(words)}</span>`, empty: true });
+
+const TEMPLATE_SLUG =
+  '<p class="tmpl-note">No authored description — this is the scan template.</p>';
 
 function purposeBlock(t, opts) {
   if (!t.purpose) {
-    return `<span class="chip">UNDOCUMENTED</span><p class="slug">No authored description — this is the scan template. Run /vibe-access:describe to author one.</p>`;
+    return filled(`<span class="chip">UNDOCUMENTED</span>${TEMPLATE_SLUG}`);
   }
   if (t.purposeTemplated) {
-    const body = opts.terse
-      ? ''
-      : `<p class="tmpl">${esc(t.purpose)}</p>`;
-    return `<span class="chip">UNDOCUMENTED</span><p class="slug">No authored description — this is the scan template. Run /vibe-access:describe to author one.</p>${body}`;
+    const body = opts.terse ? '' : `<p class="tmpl">${esc(t.purpose)}</p>`;
+    return filled(`<span class="chip">UNDOCUMENTED</span>${TEMPLATE_SLUG}${body}`);
   }
   const from = t.purposeSource === 'overrides' ? '<span class="tag">from overrides</span>' : '';
-  return `${from}<p>${esc(t.purpose)}</p>`;
+  return filled(`${from}<p>${esc(t.purpose)}</p>`);
 }
 
 function whenBlock(t, negative) {
-  if (t.purposeTemplated || !t.purpose) return notStated;
+  if (t.purposeTemplated || !t.purpose) return absent('not stated');
   const hits = sentencesOf(t.purpose).filter((s) => (negative ? NEG_CUE.test(s) : CTX_CUE.test(s) && !NEG_CUE.test(s)));
-  if (hits.length === 0) return notStated;
-  return `<p>${hits.map((s) => esc(s)).join(' ')}</p>`;
+  if (hits.length === 0) return absent('not stated');
+  return filled(`<p>${hits.map((s) => esc(s)).join(' ')}</p>`);
 }
 
 function schemaTable(schema, mined) {
@@ -880,27 +891,32 @@ function schemaTable(schema, mined) {
 
 function inputBlock(t) {
   const table = schemaTable(t.inputSchema, false);
-  if (table) return table;
+  if (table) return filled(table);
   if (t.transport.pathParams.length > 0) {
+    // The mined path-param rows ARE information — they survive the slug cull.
     const rows = t.transport.pathParams
       .map(
         (p) =>
-          `<tr><td><code>{?}</code></td><td>unknown</td><td>required</td><td>—</td><td>unnamed path parameter (position ${p.position}) — a caller cannot know what goes here.</td></tr>`
+          `<tr><td>${QMARK}</td><td>unknown</td><td>required</td><td>—</td><td>unnamed path parameter (position ${p.position}) — a caller cannot know what goes here.</td></tr>`
       )
       .join('');
-    return `<table class="params"><thead><tr><th>name</th><th>type</th><th>required</th><th>default</th><th>description</th></tr></thead><tbody>${rows}</tbody></table>`;
+    return filled(
+      `<table class="params"><thead><tr><th>name</th><th>type</th><th>required</th><th>default</th><th>description</th></tr></thead><tbody>${rows}</tbody></table>`
+    );
   }
-  return '<p class="quiet">No input schema declared.</p>';
+  return absent('no schema declared');
 }
 
 function outputBlock(t) {
   const table = schemaTable(t.outputSchema, false);
-  if (table) return table;
+  if (table) return filled(table);
   const returns = sentencesOf(t.purpose).find((s) => /\breturns?\b/i.test(s));
   if (returns && !t.purposeTemplated) {
-    return `<p>${esc(returns)} <span class="tag dotted" title="derived from the description prose; no schema field carries it">derived</span></p>`;
+    return filled(
+      `<p>${esc(returns)} <span class="tag dotted" title="derived from the description prose; no schema field carries it">derived</span></p>`
+    );
   }
-  return '<p class="quiet">No output schema declared.</p>';
+  return absent('no schema declared');
 }
 
 function annotationCell(label, a) {
@@ -919,7 +935,9 @@ function annotationCell(label, a) {
 
 function annotationsBlock(t) {
   const a = t.annotations;
-  return `<div class="anns">${annotationCell('readOnly', a.readOnly)}${annotationCell('destructive', a.destructive)}${annotationCell('idempotent', a.idempotent)}${annotationCell('openWorld', a.openWorld)}</div>`;
+  return filled(
+    `<div class="anns">${annotationCell('readOnly', a.readOnly)}${annotationCell('destructive', a.destructive)}${annotationCell('idempotent', a.idempotent)}${annotationCell('openWorld', a.openWorld)}</div>`
+  );
 }
 
 function consentBlock(t) {
@@ -929,7 +947,12 @@ function consentBlock(t) {
     : '';
   const detail = t.consent.detail ? `<p>${esc(t.consent.detail)}</p>` : '';
   if (!t.consent.mechanismStated) {
-    return `<p><b>auth: ${esc(mode)}</b></p><p class="slug">auth: ${esc(mode)} — mechanism not stated in the surface. "Capability not stated" is not "no capability required."</p>`;
+    // The auth mode is per-card ("can I call this" is in-ask). The epigram behind it —
+    // "capability not stated" is not "no capability required" — is stated ONCE, in HOW TO READ
+    // THIS. Printing it on 70 of 85 cards is the duplicate-slug wall wearing a different color.
+    return filled(
+      `<p><b>auth: ${esc(mode)}</b></p><span class="none">mechanism not stated in the surface.</span>`
+    );
   }
   const words =
     mode === 'none'
@@ -939,7 +962,7 @@ function consentBlock(t) {
         : mode === 'token'
           ? 'Token — a bearer credential on every call.'
           : 'Consent mode is not declared on this surface.';
-  return `<p><b>auth: ${esc(mode)}</b>${cap}</p><p>${esc(words)}</p>${detail}`;
+  return filled(`<p><b>auth: ${esc(mode)}</b>${cap}</p><p>${esc(words)}</p>${detail}`);
 }
 
 function callBlock(t, surface) {
@@ -950,7 +973,7 @@ function callBlock(t, surface) {
   // it prints open like every other <details> (§9).
   const real = t.transport.real;
   const collapsible = real === 'http' || real === 'grpc-npipe' ? ' pc' : '';
-  return [
+  return filled([
     '<div class="call">',
     '<div class="call-h">Native<button class="copy no-print" type="button">copy</button></div>',
     `<pre class="code">${esc(nativeCall(t, surface))}</pre>`,
@@ -960,7 +983,7 @@ function callBlock(t, surface) {
     '<p class="quiet">Projection — not a running server.</p>',
     '</details>',
     '</div>',
-  ].join('');
+  ].join(''));
 }
 
 // ---------------------------------------------------------------- chips + card
@@ -1033,7 +1056,7 @@ function renderCard(t, surface, opts) {
   };
   const blocks = BLOCK_LABELS.map(
     ([key, label]) =>
-      `<section class="block" data-block="${key}"><h4>${label}</h4>${bodies[key]}</section>`
+      `<section class="block${bodies[key].empty ? ' empty' : ''}" data-block="${key}"><h4>${label}</h4>${bodies[key].html}</section>`
   ).join('');
   const route =
     t.transport.method && t.transport.path
@@ -1043,9 +1066,10 @@ function renderCard(t, surface, opts) {
     t.prereqs.length > 0
       ? `<div class="prereq">requires <a href="#tool-${escAttr(slug(t.prereqs[0]))}">${esc(t.prereqs[0])}</a> first</div>`
       : '';
+  const id = slug(t.name);
   return [
-    `<article class="card" id="tool-${escAttr(slug(t.name))}" data-kind="${escAttr(t.kind ?? '')}" data-auth="${escAttr(t.consent.mode ?? '')}" data-vclass="${escAttr(t.verification.class)}">`,
-    `<header class="card-h"><code class="tname">${wbr(t.name)}</code><span class="rail">${chipsOf(t)}</span></header>`,
+    `<article class="card" id="tool-${escAttr(id)}" data-kind="${escAttr(t.kind ?? '')}" data-auth="${escAttr(t.consent.mode ?? '')}" data-vclass="${escAttr(t.verification.class)}">`,
+    `<header class="card-h"><code class="tname">${wbr(t.name)}</code><a class="anchor no-print" href="#tool-${escAttr(id)}" title="link to this tool">#</a><span class="rail">${chipsOf(t)}</span></header>`,
     route,
     prereq,
     blocks,
@@ -1108,9 +1132,22 @@ function indexBand(surface) {
       ].join('');
     })
     .join('');
+  // D7 — the absence rate is stated ONCE, here, and the cards mark it in one muted line each.
+  // The to-do sentence rides with the statement, not with 84 copies of it.
+  const n = surface.tools.length;
+  const { templated, withInputSchema } = surface.counts;
+  const todo =
+    templated > 0
+      ? ' Run <code>/vibe-access:describe</code> to author the missing explanations.'
+      : '';
+  const note =
+    `<p class="quiet absence-note">${templated} of ${n} descriptions are scan templates · ` +
+    `${withInputSchema} of ${n} declare an input schema. Stated once here — each card marks its ` +
+    `own hole in one line, not a wall.${todo}</p>`;
   return [
     '<section class="band" data-band="index">',
     '<h2>TOOL INDEX</h2>',
+    note,
     '<div class="filters no-print">',
     '<input type="search" id="q" placeholder="filter (press /)">',
     '<button type="button" class="f" data-filter="open">Open</button>',
@@ -1190,6 +1227,8 @@ function howToReadBand(surface) {
     '<dd>GATE-HELD and HANDLE-GATE-HELD mean the gate worked and the call never ran. RAN means data came back. A bare pass count folds those together, so this page never prints one: the verify math is always the full decomposition — ran / gate-held / handle-gate-held / open / error / unverified. <b>Tool count is not graded.</b> 17 is not a better number than 85.</dd>',
     '<dt>tier: prod-safe is an ASSERTION, not a safety proof.</dt>',
     '<dd>Nothing verified it. It is what the manifest claims, printed as a claim.</dd>',
+    '<dt>"mechanism not stated" is not "no capability required."</dt>',
+    '<dd>A card whose CONSENT block says the mechanism is unstated is telling you the surface never wrote down HOW the gate is satisfied — not that there is no gate. You find out by calling it.</dd>',
     '<dt>{?} is an unnamed path parameter.</dt>',
     '<dd>The route takes a value there and nothing in the surface says what it is. The call block renders it as <code>&lt;UNNAMED_PARAM_1&gt;</code> so a genuine gap is impossible to paste past.</dd>',
     '<dt>declared / derived / mined / unclaimed.</dt>',
@@ -1274,22 +1313,30 @@ input[type=search]{font-family:var(--font-mono);font-size:.75rem;background:var(
 .mini{font-size:.68rem;letter-spacing:.06em}
 .group-band{margin-top:32px;border-top:1px solid var(--line);padding-top:12px}
 .card{border:1px solid var(--line);border-radius:4px;padding:14px 16px;margin:14px 0;background:var(--navy-2);break-inside:avoid}
-.card-h{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.card-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 .tname{font-size:1rem;font-weight:600;color:var(--ink)}
-.rail{display:flex;gap:6px;flex-wrap:wrap}
+.anchor{color:var(--ink-3);text-decoration:none;font-size:.8rem}
+.anchor:hover{color:var(--cyan)}
+.rail{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .chip{font-size:.62rem;letter-spacing:.1em;border:1px solid var(--ink-3);color:var(--ink-2);border-radius:2px;padding:2px 6px}
 .chip.filled{background:var(--magenta);border-color:var(--magenta);color:#fff;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 .chip.risk{border-color:var(--magenta);color:var(--magenta)}
 .chip.dotted{border-style:dashed}
 .route{margin:8px 0;font-size:.82rem;color:var(--ink-2)}
 .verb{color:var(--cyan);font-family:var(--font-mono)}
-.qmark{color:var(--magenta);font-family:var(--font-mono)}
+/* The unknown parameter is a GAP, not a fire: styled + footnoted, never danger-inked (D11). */
+.qmark{font-family:var(--font-mono);color:var(--ink);font-weight:600;text-decoration:underline dotted;cursor:help}
 .prereq{font-size:.75rem;color:var(--ink-2)}
 .prereq a{color:var(--cyan)}
 .block{margin-top:12px}
 .block p{margin:0 0 6px}
-.slug{color:var(--magenta);font-size:.82rem}
+/* D7 — an empty block is one compact labeled line; four of them fold into a single run. */
+.block.empty{display:inline-block;margin:8px 14px 0 0}
+.block.empty h4{display:inline;margin-right:5px}
+.none{color:var(--ink-3);font-size:.74rem}
 .tmpl{color:var(--ink-3);font-style:italic}
+.tmpl-note{color:var(--ink-3);font-size:.74rem}
+.absence-note{border-left:2px solid var(--line);padding-left:10px}
 .tag{font-size:.62rem;letter-spacing:.08em;color:var(--ink-3);border:1px solid var(--line);border-radius:2px;padding:1px 5px;margin-right:6px}
 .tag.dotted{border-style:dashed}
 .params{width:100%;border-collapse:collapse;font-size:.78rem;break-inside:avoid}
@@ -1396,6 +1443,7 @@ const JS = `
   rows.forEach(function(r){var h=r.getAttribute('href');if(h&&!Object.prototype.hasOwnProperty.call(rowFor,h))rowFor[h]=r;});
   var q=document.getElementById('q');
   var active={};
+  var writing=false;
   function match(c){
     var t=c.textContent.toLowerCase();
     var term=q&&q.value?q.value.toLowerCase():'';
@@ -1406,7 +1454,22 @@ const JS = `
     if(active.undocumented&&c.innerHTML.indexOf('UNDOCUMENTED')<0)return false;
     return true;
   }
-  function apply(){
+  // View state — filters, text query, density — lives in the URL hash, so "send me just the
+  // 15 open routes" is a link. Tool anchors (#tool-<name>) share the hash and are never
+  // clobbered: the state writer only fires on a real interaction.
+  function writeHash(){
+    var on=Object.keys(active).filter(function(k){return active[k];});
+    var parts=[];
+    if(on.length)parts.push('f='+on.join(','));
+    if(root.dataset.density==='rows')parts.push('d=rows');
+    if(q&&q.value)parts.push('q='+encodeURIComponent(q.value));
+    writing=true;
+    var next='#'+parts.join('&');
+    if(next==='#')history.replaceState(null,'',location.pathname+location.search);
+    else history.replaceState(null,'',next);
+    setTimeout(function(){writing=false;},0);
+  }
+  function apply(write){
     var shown=0;
     cards.forEach(function(c){
       var ok=match(c);
@@ -1420,21 +1483,27 @@ const JS = `
     document.body.classList.toggle('filtered',!!filtered);
     var pf=document.querySelector('.print-filter');
     if(pf)pf.textContent='FILTERED VIEW — showing '+shown+' of '+cards.length+'. Filters: '+(on.join(', ')||'text');
-    location.hash=on.length?('#f='+on.join(',')):'';
+    if(write!==false)writeHash();
   }
-  if(q)q.addEventListener('input',apply);
+  if(q)q.addEventListener('input',function(){apply();});
   document.addEventListener('keydown',function(e){if(e.key==='/'&&document.activeElement!==q&&q){e.preventDefault();q.focus();}});
   Array.prototype.forEach.call(document.querySelectorAll('.f'),function(btn){
     btn.addEventListener('click',function(){
       var k=btn.dataset.filter;active[k]=!active[k];btn.classList.toggle('on',!!active[k]);apply();
     });
   });
+  // Compact rows are the DEFAULT above 40 tools, and the renderer already said so on <html>.
+  // The button toggles; it does not own the default.
   var d=document.getElementById('density');
+  function density(v){root.dataset.density=v;if(d)d.textContent='density: '+(v==='rows'?'rows (compact)':'cards');}
+  density(root.dataset.density==='rows'?'rows':'cards');
   if(d)d.addEventListener('click',function(){
-    root.dataset.density=root.dataset.density==='rows'?'':'rows';
+    density(root.dataset.density==='rows'?'cards':'rows');writeHash();
   });
-  if(cards.length>40)root.dataset.density='rows';
-  cards.forEach(function(c){c.querySelector('.card-h').addEventListener('click',function(){c.classList.toggle('open');});});
+  cards.forEach(function(c){c.querySelector('.card-h').addEventListener('click',function(e){
+    if(e.target.classList.contains('anchor'))return;
+    c.classList.toggle('open');
+  });});
   Array.prototype.forEach.call(document.querySelectorAll('.copy'),function(btn){
     btn.addEventListener('click',function(e){
       e.preventDefault();e.stopPropagation();
@@ -1450,11 +1519,40 @@ const JS = `
     }).join('\\n');
     if(navigator.clipboard)navigator.clipboard.writeText(out);
   });
-  var hash=location.hash.match(/#f=(.*)/);
-  if(hash){hash[1].split(',').forEach(function(k){
-    var btn=document.querySelector('.f[data-filter="'+k+'"]');
-    if(btn){active[k]=true;btn.classList.add('on');}
-  });apply();}
+  // A deep link to one tool has to LAND on it — in compact density that means opening the card,
+  // not dropping the reader on a collapsed row.
+  function reveal(h){
+    if(h.indexOf('#tool-')!==0)return false;
+    var c=document.getElementById(h.slice(1));
+    if(!c)return false;
+    c.classList.remove('hidden');
+    c.classList.add('open');
+    c.scrollIntoView();
+    return true;
+  }
+  function readHash(){
+    var h=location.hash;
+    if(reveal(h))return;
+    active={};
+    Array.prototype.forEach.call(document.querySelectorAll('.f'),function(b){b.classList.remove('on');});
+    h.replace(/^#/,'').split('&').forEach(function(part){
+      var eq=part.indexOf('=');
+      if(eq<0)return;
+      var k=part.slice(0,eq),v=part.slice(eq+1);
+      if(k==='f'){v.split(',').forEach(function(f){
+        var btn=document.querySelector('.f[data-filter="'+f+'"]');
+        if(btn){active[f]=true;btn.classList.add('on');}
+      });}
+      else if(k==='d')density(v==='rows'?'rows':'cards');
+      else if(k==='q'&&q)q.value=decodeURIComponent(v);
+    });
+    apply(false);
+  }
+  if(location.hash)readHash();
+  window.addEventListener('hashchange',function(){if(!writing)readHash();});
+  Array.prototype.forEach.call(document.querySelectorAll('.anchor'),function(a){
+    a.addEventListener('click',function(){setTimeout(function(){reveal(a.getAttribute('href'));},0);});
+  });
   // Every details opens for print EXCEPT .pc — the MCP projection on a surface that already
   // prints a real native call (see callBlock).
   window.addEventListener('beforeprint',function(){
@@ -1501,9 +1599,13 @@ export function render(surfaceView, opts = {}) {
   const o = { terse: opts.terse === true, noSource: surfaceView.noSource === true };
   const island = jsonIsland(surfaceView);
   const title = `${surfaceView.app ?? 'agent surface'} — agent access`;
+  // D5 — compact rows are the DEFAULT above 40 tools, and the default is RENDERED, not applied
+  // by a script after paint: 85 uncollapsed cards flashing before the JS lands is the exact
+  // scroll nobody finishes, and with scripting off it never collapses at all.
+  const density = surfaceView.tools.length > 40 ? ' data-density="rows"' : '';
   return [
     '<!doctype html>',
-    '<html lang="en">',
+    `<html lang="en"${density}>`,
     '<head>',
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
