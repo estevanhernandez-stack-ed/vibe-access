@@ -20,7 +20,8 @@
           "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
           "path": { "type": "string" },
           "sourceRef": { "type": "string" },
-          "auth": { "enum": ["none", "session", "token"] }
+          "auth": { "enum": ["none", "session", "token"] },
+          "inputShape": { "$ref": "#/definitions/inputShape" }
         }
       }
     },
@@ -34,6 +35,30 @@
           "sourceRef": { "type": "string" },
           "reason": { "type": "string" }
         }
+      }
+    }
+  },
+  "definitions": {
+    "inputShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "properties", "x-mined-by", "x-mined-from"],
+      "properties": {
+        "type": { "const": "object" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string" },
+              "x-in": { "enum": ["body", "query", "path"] }
+            }
+          }
+        },
+        "required": { "type": "array", "items": { "type": "string" } },
+        "x-mined-by": { "enum": ["zod", "joi", "reads"] },
+        "x-mined-from": { "type": "string" }
       }
     }
   }

@@ -14,13 +14,19 @@ export function scan(appRoot, { now } = {}) {
   let unmapped = [];
   if (resolved.status === 'ready') {
     const found = resolved.adapter.detectRoutes(ctx);
-    routes = found.routes.map((r) => ({
-      name: r.name,
-      method: r.method,
-      path: r.path,
-      sourceRef: r.sourceRef,
-      auth: resolved.adapter.detectAuth(r, ctx),
-    }));
+    routes = found.routes.map((r) => {
+      // §13.1 — optional and additive. An adapter without a miner, or a handler that
+      // reads no input, simply carries no inputShape; a shape-free inventory validates.
+      const inputShape = resolved.adapter.detectInputShape?.(r, ctx) ?? null;
+      return {
+        name: r.name,
+        method: r.method,
+        path: r.path,
+        sourceRef: r.sourceRef,
+        auth: resolved.adapter.detectAuth(r, ctx),
+        ...(inputShape ? { inputShape } : {}),
+      };
+    });
     unmapped = found.unmapped;
   }
 

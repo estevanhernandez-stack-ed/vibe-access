@@ -759,23 +759,31 @@ const tokenPlaceholder = (t, adapter) => {
   return '<SESSION_TOKEN>';
 };
 
-function bodyPlaceholders(schema) {
+// A mined property knows which slot it was read from (`x-in`). A DECLARED schema
+// (MCP inputSchema) has no slot and is a body schema by definition — hence the
+// `?? 'body'` default. Query parameters belong in the URL; putting them in a JSON
+// body would hand the reader a call that silently drops them.
+function propsIn(schema, slot) {
   const props = schema && typeof schema === 'object' ? schema.properties : null;
-  if (!props || Object.keys(props).length === 0) return null;
+  if (!props) return [];
+  return Object.entries(props).filter(([, def]) => (def?.['x-in'] ?? 'body') === slot);
+}
+
+// An unknown type renders as a NAMED placeholder — `<listId>`, never a fabricated type.
+const placeholderFor = (name, def) => {
+  const type = def?.type ?? 'unknown';
+  if (type === 'number' || type === 'integer') return 0;
+  if (type === 'boolean') return false;
+  if (type === 'array') return [];
+  if (type === 'object') return {};
+  return `<${name}>`;
+};
+
+function bodyPlaceholders(schema) {
+  const entries = propsIn(schema, 'body');
+  if (entries.length === 0) return null;
   const body = {};
-  for (const [name, def] of Object.entries(props)) {
-    const type = def?.type ?? 'unknown';
-    body[name] =
-      type === 'number' || type === 'integer'
-        ? 0
-        : type === 'boolean'
-          ? false
-          : type === 'array'
-            ? []
-            : type === 'object'
-              ? {}
-              : `<${name}>`;
-  }
+  for (const [name, def] of entries) body[name] = placeholderFor(name, def);
   return body;
 }
 
@@ -796,12 +804,23 @@ function nativeCall(t, surface) {
     return lines.join('\n');
   }
   if (real === 'http') {
+    const rawSegments = String(t.transport.path ?? '').split('/');
+    const wildcards = rawSegments.filter((s) => s === '*').length;
+    // Path names only get used when the source named exactly as many as the path has
+    // wildcards. A partial match is a guess about which slot is which, and this page
+    // does not guess — it says UNNAMED and means it.
+    const pathNames = propsIn(t.inputSchema, 'path').map(([name]) => name);
+    const named = wildcards > 0 && pathNames.length === wildcards;
     let n = 0;
-    const filled = String(t.transport.path ?? '')
-      .split('/')
-      .map((seg) => (seg === '*' ? `<UNNAMED_PARAM_${(n += 1)}>` : seg))
+    const filledPath = rawSegments
+      .map((seg) => (seg === '*' ? (named ? `<${pathNames[n++]}>` : `<UNNAMED_PARAM_${(n += 1)}>`) : seg))
       .join('/');
-    const url = `${t.transport.baseUrl ?? ''}${filled}`;
+
+    const query = propsIn(t.inputSchema, 'query')
+      .map(([name, def]) => `${name}=${encodeURIComponent(String(placeholderFor(name, def)))}`)
+      .join('&');
+    const url = `${t.transport.baseUrl ?? ''}${filledPath}${query ? `?${query}` : ''}`;
+
     const lines = [`curl -X ${t.transport.method ?? 'GET'} '${url}'`];
     if (t.consent.mode && t.consent.mode !== 'none') {
       lines[0] += ' \\';
@@ -813,8 +832,14 @@ function nativeCall(t, surface) {
       lines.push(`  -H 'Content-Type: application/json' \\`);
       lines.push(`  -d '${JSON.stringify(body)}'`);
     }
-    if (n > 0) {
-      lines.push('', `${n} unnamed path parameter${n === 1 ? '' : 's'} — a caller cannot know what goes here.`);
+    if (minedFrom(t.inputSchema)) {
+      lines.push('', `Parameters mined from ${minedFrom(t.inputSchema)} — read out of the handler, not declared.`);
+    }
+    if (wildcards > 0 && !named) {
+      lines.push(
+        '',
+        `${wildcards} unnamed path parameter${wildcards === 1 ? '' : 's'} — a caller cannot know what goes here.`
+      );
     }
     return lines.join('\n');
   }
@@ -825,7 +850,13 @@ function nativeCall(t, surface) {
 }
 
 function mcpProjection(t) {
-  const body = bodyPlaceholders(t.inputSchema);
+  // The MCP wire shape has one bag of arguments — there is no body/query split there,
+  // so every mined property lands in it regardless of which slot the handler read it from.
+  const props = t.inputSchema && typeof t.inputSchema === 'object' ? (t.inputSchema.properties ?? null) : null;
+  const body =
+    props && Object.keys(props).length > 0
+      ? Object.fromEntries(Object.entries(props).map(([name, def]) => [name, placeholderFor(name, def)]))
+      : null;
   const args = body
     ? JSON.stringify(body, null, 6).replace(/\n/g, '\n    ')
     : '{} /* unknown — no input schema declared or minable */';
@@ -873,24 +904,35 @@ function whenBlock(t, negative) {
   return filled(`<p>${hits.map((s) => esc(s)).join(' ')}</p>`);
 }
 
-function schemaTable(schema, mined) {
+// §13.1.5 — mined is not declared, and the card says which. A shape mined from bare
+// handler reads states no requiredness at all, so its `required` column reads
+// "unstated" — never the lie "optional", which would be a claim the source never made.
+const minedFrom = (schema) => (schema && typeof schema === 'object' ? (schema['x-mined-from'] ?? null) : null);
+const IN_LABEL = { body: 'body', query: 'query', path: 'path' };
+
+function schemaTable(schema) {
   const props = schema?.properties ?? null;
   if (!props || Object.keys(props).length === 0) return null;
+  const mined = minedFrom(schema);
+  const requirednessStated = Array.isArray(schema.required) || (mined && schema['x-mined-by'] !== 'reads');
   const required = new Set(Array.isArray(schema.required) ? schema.required : []);
   const rows = Object.entries(props)
     .map(([name, def]) => {
       const type = def?.enum ? `enum(${def.enum.map((v) => esc(v)).join(' | ')})` : esc(def?.type ?? 'unknown');
-      const req = required.has(name) ? 'required' : 'optional';
+      const req = requirednessStated ? (required.has(name) ? 'required' : 'optional') : 'unstated';
       const dflt = def?.default === undefined ? '—' : esc(JSON.stringify(def.default));
-      return `<tr><td><code>${wbr(name)}</code></td><td>${type}</td><td>${req}</td><td>${dflt}</td><td>${esc(def?.description ?? '')}</td></tr>`;
+      const where = def?.['x-in'] ? `in ${IN_LABEL[def['x-in']] ?? esc(def['x-in'])}` : esc(def?.description ?? '');
+      return `<tr><td><code>${wbr(name)}</code></td><td>${type}</td><td>${req}</td><td>${dflt}</td><td>${where}</td></tr>`;
     })
     .join('');
-  const tag = mined ? '<span class="tag">mined from source</span>' : '';
+  const tag = mined
+    ? `<span class="tag dotted" title="read out of the handler source by scan — not a declared schema">mined from ${esc(mined)}</span>`
+    : '';
   return `${tag}<table class="params"><thead><tr><th>name</th><th>type</th><th>required</th><th>default</th><th>description</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function inputBlock(t) {
-  const table = schemaTable(t.inputSchema, false);
+  const table = schemaTable(t.inputSchema);
   if (table) return filled(table);
   if (t.transport.pathParams.length > 0) {
     // The mined path-param rows ARE information — they survive the slug cull.
@@ -908,7 +950,7 @@ function inputBlock(t) {
 }
 
 function outputBlock(t) {
-  const table = schemaTable(t.outputSchema, false);
+  const table = schemaTable(t.outputSchema);
   if (table) return filled(table);
   const returns = sentencesOf(t.purpose).find((s) => /\breturns?\b/i.test(s));
   if (returns && !t.purposeTemplated) {

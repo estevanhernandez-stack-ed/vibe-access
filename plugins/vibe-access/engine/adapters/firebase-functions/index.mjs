@@ -1,5 +1,6 @@
 import { detectRoutes } from './routes.mjs';
 import { detectAuth } from './auth.mjs';
+import { detectInputShape } from './input-shape.mjs';
 import { scaffoldAffordance } from './scaffold.mjs';
 
 export const firebaseFunctionsAdapter = {
@@ -7,6 +8,7 @@ export const firebaseFunctionsAdapter = {
   matches: (detection) => detection?.framework === 'firebase-functions',
   detectRoutes,
   detectAuth,
+  detectInputShape,
   scaffoldAffordance,
   gateMechanism: () => ({
     kind: 'env',

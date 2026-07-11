@@ -30,6 +30,16 @@ const carryAuthored = (prev) => ({
   ...(prev?.destructive !== undefined ? { destructive: prev.destructive } : {}),
 });
 
+const isMined = (schema) => Boolean(schema && typeof schema === 'object' && schema['x-mined-from']);
+
+// §13.1.3 — the mined shape is scan-derived, so re-map refreshes it like any scanned
+// field. A DECLARED schema (hand-authored, or a future MCP inputSchema) beats mined and
+// is never clobbered: it's kept whenever what's already there is not itself a mined shape.
+function resolveInput(prevInput, minedShape) {
+  if (prevInput && !isMined(prevInput)) return prevInput;
+  return minedShape ?? prevInput ?? null;
+}
+
 export function buildManifest(inventory, { previous = null, baseUrls, now } = {}) {
   const prevById = new Map((previous?.affordances ?? []).map((a) => [a.id, a]));
 
@@ -49,7 +59,7 @@ export function buildManifest(inventory, { previous = null, baseUrls, now } = {}
       tier,
       kind, // bake-through: the effective value lands here; overrides.kind stays as re-map memory
       transport: { type: 'http', method: route.method, path: route.path },
-      input: prev?.input ?? null,
+      input: resolveInput(prev?.input ?? null, route.inputShape ?? null),
       output: prev?.output ?? null,
       auth: route.auth,
       ...carryAuthored(prev),
