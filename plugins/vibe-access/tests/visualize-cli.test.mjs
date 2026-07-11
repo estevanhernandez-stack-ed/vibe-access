@@ -57,6 +57,26 @@ describe('visualize CLI (§3)', () => {
     expect(existsSync(out)).toBe(true);
   });
 
+  // The live-MCP path the SKILL documents: run from the PLUGIN dir, pass a relative --input
+  // that lives under the target app. Relative paths resolve against appRoot, not process.cwd().
+  test('a relative --input resolves against appRoot, not cwd', () => {
+    const parked = join(appRoot, '.vibe-access', 'state');
+    mkdirSync(parked, { recursive: true });
+    copyFileSync(join(FIXTURES, 'mcp-tools-list.json'), join(parked, 'visualize-input.json'));
+    const pluginRoot = fileURLToPath(new URL('../', import.meta.url));
+    const r = run(
+      ['--app', appRoot, '--input', '.vibe-access/state/visualize-input.json', '--out', 'docs/rel.html'],
+      pluginRoot
+    );
+    expect(r.status).toBe(0);
+    const summary = JSON.parse(r.stdout);
+    expect(summary.source).toBe('mcp');
+    expect(summary.out).toBe(join(appRoot, 'docs', 'rel.html'));
+    expect(existsSync(join(appRoot, 'docs', 'rel.html'))).toBe(true);
+    expect(existsSync(join(pluginRoot, 'docs', 'rel.html'))).toBe(false);
+    rmSync(join(appRoot, '.vibe-access'), { recursive: true, force: true });
+  });
+
   test('an MCP tools/list payload is sniffed, not flag-gated', () => {
     const out = join(root, 'out', 'mcp.html');
     const r = run(['--app', appRoot, '--input', join(FIXTURES, 'mcp-tools-list.json'), '--out', out]);

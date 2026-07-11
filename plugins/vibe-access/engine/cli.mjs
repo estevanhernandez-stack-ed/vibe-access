@@ -115,7 +115,9 @@ const COMMANDS = {
     for (const key of ['input', 'out']) {
       if (flags[key] === true) throw new Error(`--${key} requires a value`);
     }
-    const inputPath = flags.input ? resolve(String(flags.input)) : join(appRoot, 'agent-access.json');
+    // Relative --input/--out mean "under the app", not "under process.cwd()" — the skills invoke
+    // the engine from the plugin dir. resolve(appRoot, x) leaves absolute paths untouched.
+    const inputPath = flags.input ? resolve(appRoot, String(flags.input)) : join(appRoot, 'agent-access.json');
     if (!existsSync(inputPath)) {
       throw new Error('no input — expected agent-access.json at the app root or --input <file>');
     }
@@ -130,7 +132,7 @@ const COMMANDS = {
     const surface = normalize(json, { renderedAt, noSource: flags['no-source'] === true });
     const html = render(surface, { terse: flags.terse === true });
     const outPath = flags.out
-      ? resolve(String(flags.out))
+      ? resolve(appRoot, String(flags.out))
       : join(appRoot, 'docs', 'vibe-access', `agent-access-${renderedAt.slice(0, 10)}.html`);
     mkdirSync(dirname(outPath), { recursive: true });
     writeFileSync(outPath, html);
