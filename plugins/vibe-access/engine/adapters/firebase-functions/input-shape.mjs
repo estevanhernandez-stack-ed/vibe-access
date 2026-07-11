@@ -178,19 +178,75 @@ function mineReads(handlerSource) {
   return { type: 'object', properties, 'x-mined-by': 'reads' };
 }
 
+// Firebase Hosting rewrites do not populate `req.params` — a wildcard segment arrives
+// inside `req.path`, and the handler slices it out by hand:
+//
+//     const pathParts = req.path.split("/");
+//     const targetUid = pathParts[pathParts.length - 2];
+//
+// That is mechanical, not a guess: an offset from the end of the path resolves to exactly
+// one segment of the ROUTE path, and if that segment is a `*` the local's name is the
+// name of that wildcard. This is the only way those parameters can ever be named — nothing
+// else in the app states them — and an unnamed path parameter is a call a reader cannot
+// paste. A resolved offset that does NOT land on a `*` is discarded: it named a literal
+// segment, which is not a parameter.
+const PATH_SPLIT_RE = new RegExp(
+  `(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*${REQ}\\s*\\??\\.\\s*(?:path|url|originalUrl)\\s*\\.\\s*split\\(\\s*['"]/['"]\\s*\\)`
+);
+
+function minePathParams(handlerSource, routePath) {
+  if (!routePath || !routePath.includes('*')) return [];
+  const bind = PATH_SPLIT_RE.exec(handlerSource);
+  if (!bind) return [];
+  const parts = bind[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const segments = routePath.split('/');
+
+  const found = [];
+  const fromEnd = new RegExp(
+    `(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*${parts}\\s*\\[\\s*${parts}\\s*\\.\\s*length\\s*-\\s*(\\d+)\\s*\\]`,
+    'g'
+  );
+  for (const m of handlerSource.matchAll(fromEnd)) {
+    found.push({ name: m[1], index: segments.length - Number(m[2]) });
+  }
+  const absolute = new RegExp(`(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*${parts}\\s*\\[\\s*(\\d+)\\s*\\]`, 'g');
+  for (const m of handlerSource.matchAll(absolute)) {
+    found.push({ name: m[1], index: Number(m[2]) });
+  }
+
+  const seen = new Set();
+  return found
+    .filter(({ index }) => segments[index] === '*' && !seen.has(index) && seen.add(index) !== false)
+    .sort((a, b) => a.index - b.index);
+}
+
 /**
  * Mine the input shape of one handler.
  *
  * @param {string|null} handlerSource - the extracted handler body
  * @param {string|null} fileSource - the whole file (module-scope validator schemas live here)
  * @param {string} sourceRef - what the shape gets stamped with; mined is not declared
+ * @param {string|null} routePath - the route path, so `*` wildcards can be named from the handler's own slicing
  * @returns {object|null} a JSON-Schema-shaped object, or null when the handler reads nothing
  */
-export function mineInputShape(handlerSource, fileSource, sourceRef) {
+export function mineInputShape(handlerSource, fileSource, sourceRef, routePath = null) {
   if (!handlerSource) return null;
-  const shape = mineValidator(handlerSource, fileSource ?? handlerSource) ?? mineReads(handlerSource);
-  if (!shape) return null;
-  return { ...shape, 'x-mined-from': sourceRef };
+  const body = mineValidator(handlerSource, fileSource ?? handlerSource) ?? mineReads(handlerSource);
+  const pathParams = minePathParams(handlerSource, routePath);
+  if (!body && pathParams.length === 0) return null;
+
+  // Path parameters lead: they come first in the URL, so they come first in the table.
+  const properties = {};
+  for (const { name } of pathParams) properties[name] = { type: 'unknown', 'x-in': 'path' };
+  Object.assign(properties, body?.properties ?? {});
+
+  return {
+    type: 'object',
+    properties,
+    ...(body?.required ? { required: body.required } : {}),
+    'x-mined-by': body?.['x-mined-by'] ?? 'reads',
+    'x-mined-from': sourceRef,
+  };
 }
 
 /** Adapter entry point — same read-the-file discipline as detectAuth. */
@@ -203,5 +259,5 @@ export function detectInputShape(route) {
     return null;
   }
   const handlerSource = extractFunctionBody(route.sourceExportName ?? route.name, fileSource);
-  return mineInputShape(handlerSource, fileSource, route.sourceRef);
+  return mineInputShape(handlerSource, fileSource, route.sourceRef, route.path);
 }

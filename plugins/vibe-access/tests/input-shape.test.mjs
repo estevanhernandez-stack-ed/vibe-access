@@ -118,6 +118,37 @@ describe('mineInputShape — joi', () => {
   });
 });
 
+describe('mineInputShape — path wildcards named from the handler slicing them', () => {
+  const HANDLER = `const pathParts = req.path.split("/");
+      const listOwnerId = pathParts[pathParts.length - 3];
+      const listType = pathParts[pathParts.length - 2];`;
+
+  test('offsets from the end resolve onto the route wildcards, in left-to-right order', () => {
+    const shape = mineInputShape(HANDLER, HANDLER, REF, '/api/lists/*/*/like');
+    expect(Object.entries(shape.properties)).toEqual([
+      ['listOwnerId', { type: 'unknown', 'x-in': 'path' }],
+      ['listType', { type: 'unknown', 'x-in': 'path' }],
+    ]);
+  });
+
+  test('a slice that lands on a LITERAL segment is discarded — it named no parameter', () => {
+    const src = `const pathParts = req.path.split("/");
+      const verb = pathParts[pathParts.length - 1];`;
+    expect(mineInputShape(src, src, REF, '/api/lists/*/like')).toBeNull();
+  });
+
+  test('a route with no wildcards mines no path parameters', () => {
+    expect(mineInputShape(HANDLER, HANDLER, REF, '/api/lists')).toBeNull();
+  });
+
+  test('path parameters lead the body properties they are called alongside', () => {
+    const src = `${HANDLER}
+      const { title } = req.body;`;
+    const shape = mineInputShape(src, src, REF, '/api/lists/*/*/like');
+    expect(Object.keys(shape.properties)).toEqual(['listOwnerId', 'listType', 'title']);
+  });
+});
+
 describe('mineInputShape — the honesty rule', () => {
   test('a handler that reads no input yields no shape — nothing is invented', () => {
     const src = `exports.ping = async (req, res) => res.json({ pong: true });`;

@@ -1,0 +1,3235 @@
+{
+  "schemaVersion": 1,
+  "app": "WeSeeYouAtTheMovies",
+  "adapter": "firebase-functions",
+  "generatedAt": "2026-07-09T22:00:58.442Z",
+  "baseUrls": {
+    "dev": "http://localhost:5000"
+  },
+  "discoveryRoute": null,
+  "affordances": [
+    {
+      "id": "generate-quiz",
+      "description": "Act: POST /api/generate-quiz",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/generate-quiz"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieTitle": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movieId": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Generates a movie trivia quiz for one film and caches it on the movieQuizzes doc for reuse. Send `movieTitle` and `movieId`; returns the question set. Writes to movieQuizzes. Do not call it to fetch an existing quiz — use get-shared-questions for that; a call here can spend a model generation. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "save-quiz-result",
+      "description": "Act: POST /api/save-quiz-result",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/save-quiz-result"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "answers": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movieId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movieTitle": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movieData": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Records one completed quiz attempt for the signed-in user and rolls the derived state forward. Send `sessionId`, `answers`, `movieId`, `movieTitle` and `movieData`; returns the scored result. Writes a quizAttempts doc and updates watched and unlockedLists, so calling it twice for one session double-counts. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "report-question",
+      "description": "Act: POST /api/report-question",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/report-question"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movieTitle": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "question": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "options": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "correctAnswer": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "questionIndex": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Flags one quiz question as wrong or broken for human review. Send `movieId`, `movieTitle`, `question`, `options`, `correctAnswer` and `questionIndex`; returns ok. Writes a report and updates the movieQuizzes doc. Not for editing a question — that is manage-question. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "add-to-watched",
+      "description": "Act: POST /api/add-to-watched",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/add-to-watched"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movie": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\profiles.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Marks a movie as watched for the signed-in user, which can unlock list badges as a side effect. Send the `movie` object; returns 201 on the write. Writes to watched and unlockedLists. Do not use it to build a wishlist — that is add-to-want-to-see. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "submit-score",
+      "description": "Act: POST /api/submit-score",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/submit-score"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "score": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\profiles.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Records the signed-in user's rating of one movie. Send `movieId` and `score`; returns 201. Writes to movies and ratings. Not the quiz score path — quiz results go through save-quiz-result. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "add-to-want-to-see",
+      "description": "Act: POST /api/add-to-want-to-see",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/add-to-want-to-see"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movie": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\profiles.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Adds a movie to the signed-in user's want-to-see list. Send the `movie` object; returns 201. Writes to wantToSee only, never to watched. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-user-profile",
+      "description": "Read: GET /api/profile",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/profile"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the signed-in user's profile document. Read-only aside from a rate-limit counter, and it 429s when you hammer it, so do not poll it in a loop. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-leaderboard",
+      "description": "Read: GET /api/leaderboard",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/leaderboard"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "locationRegion": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\leaderboards.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the ranked user leaderboard, filterable by `locationId`, `locationRegion` and `limit` in the query string. Read-only. For one user's own position use get-my-rank instead of paging this. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-my-rank",
+      "description": "Read: GET /api/my-rank",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/my-rank"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the signed-in user's own leaderboard position without paging the whole board. Read-only apart from a rate-limit counter; 429s under repeat calls. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "screening-events",
+      "description": "Act: POST /api/screening-events",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/screening-events"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieTitle": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movieId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "eventDate": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "eventTime": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationName": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationCity": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationRegion": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\events\\screening.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\events\\screening.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Creates a screening event. Send `movieTitle`, `movieId`, `eventDate`, `eventTime`, `locationName`, `locationCity` and `locationRegion`; returns 201 with the new event. Writes a screeningEvents doc. Despite the plural name this is a POST that creates — it does not list events; get-admin-events does. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "verify-ticket",
+      "description": "Act: POST /api/verify-ticket",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/verify-ticket"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movieId": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\events\\screening.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\events\\screening.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Verifies a user's ticket for a screening event and credits attendance. Send `eventId` and `movieId`; returns 200 with the verification. Updates screeningEvents, watched and the user doc. Never call it speculatively — it grants credit. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-admin-stats",
+      "description": "Read: GET /api/admin/stats",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/stats"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns platform-wide counts over users and screeningEvents for the admin dashboard. Read-only. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-admin-users",
+      "description": "Read: GET /api/admin/users",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/users"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\admin\\userManagement.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the user directory for admin review, filtered by `search` and `limit` in the query string. Read-only. Not for a user reading their own record — that is get-user-profile. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "update-user-role",
+      "description": "Act: PATCH /api/admin/users/*/role",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "PATCH",
+        "path": "/api/admin/users/*/role"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "targetUid": {
+            "type": "unknown",
+            "x-in": "path"
+          },
+          "role": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\admin\\userManagement.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Changes one user's role, which is a privilege escalation path. Send the target user in the path and the new `role` in the body; returns 200. Updates the users doc. Never call it to update anything but the role, and never on behalf of a user acting on themselves. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "update-user-location",
+      "description": "Act: PATCH /api/admin/users/*/location",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "PATCH",
+        "path": "/api/admin/users/*/location"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "targetUid": {
+            "type": "unknown",
+            "x-in": "path"
+          },
+          "locationId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationName": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationCity": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationRegion": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\admin\\userManagement.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Changes one user's assigned location. Send `locationId`, `locationName`, `locationCity` and `locationRegion`; returns 200. Updates the users doc. For a user setting their own location the first time, use set-initial-location. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-admin-events",
+      "description": "Read: GET /api/admin/events",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/events"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\admin\\userManagement.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns screening events for admin review, filtered by `status` in the query string. Read-only. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "update-event-status",
+      "description": "Act: PATCH /api/admin/events/*/status",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "PATCH",
+        "path": "/api/admin/events/*/status"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "unknown",
+            "x-in": "path"
+          },
+          "active": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\events\\screening.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\events\\screening.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Activates or deactivates one screening event. Send `active`; returns 200. Updates the screeningEvents doc; deactivating hides the event from users. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-recent-quiz-activity",
+      "description": "Read: GET /api/recent-quiz-activity",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/recent-quiz-activity"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns the recent public quiz-attempt feed, capped by `limit` in the query string. Read-only. Open: the handler runs no auth check, so it answers any caller. Do not pass anything user-identifying to it."
+      }
+    },
+    {
+      "id": "get-this-day-in-cinema",
+      "description": "Read: GET /api/this-day-in-cinema",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/this-day-in-cinema"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns the on-this-day cinema feature for the current date, served from the dailyCinemaCache and refilled on a miss. Read-only to callers; a cache miss writes the cache doc. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "get-my-quiz-history",
+      "description": "Read: GET /api/my-quiz-history",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/my-quiz-history"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the signed-in user's own quiz attempts, capped by `limit`. Read-only. Never use it to read another user's history — it is scoped to the token holder. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-quiz-analytics",
+      "description": "Read: GET /api/admin/quiz-analytics",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/quiz-analytics"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns aggregate quiz analytics across quizAttempts for the admin dashboard. Read-only. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-my-lists",
+      "description": "Read: GET /api/my-lists",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/my-lists"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the signed-in user's own movie lists and their unlock state. Read-only to the caller; may materialize the unlockedLists doc on first read. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "create-or-update-list",
+      "description": "Act: POST /api/my-lists/*",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/my-lists/*"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "listType": {
+            "type": "unknown",
+            "x-in": "path"
+          },
+          "listName": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "description": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movies": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "isPublic": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\profiles.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Creates or overwrites one of the signed-in user's movie lists. Send `listName`, `description`, `movies` and `isPublic`; returns 200. Writes the userLists doc and 403s when the list type is not unlocked. It OVERWRITES: send the whole `movies` array, not a delta, or you will drop entries."
+      }
+    },
+    {
+      "id": "get-unlock-progress",
+      "description": "Read: GET /api/unlock-progress",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/unlock-progress"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns how close the signed-in user is to unlocking each list type. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-user-lists",
+      "description": "Read: GET /api/users/*/lists",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/users/*/lists"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "targetUserId": {
+            "type": "unknown",
+            "x-in": "path"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\profiles.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 404"
+      },
+      "overrides": {
+        "description": "Returns one user's public lists by user id. Read-only. Open: the handler runs no auth check, so it answers any caller. Never use it to read private lists — it only serves what the owner marked public, and get-my-lists is the authenticated path."
+      }
+    },
+    {
+      "id": "get-community-lists",
+      "description": "Read: GET /api/community-lists",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/community-lists"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "listType": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "sort": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\profiles.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns the public community list feed, filtered by `listType`, `sort` and `limit`. Read-only. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "like-list",
+      "description": "Act: POST /api/lists/*/*/like",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/lists/*/*/like"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "listOwnerId": {
+            "type": "unknown",
+            "x-in": "path"
+          },
+          "listType": {
+            "type": "unknown",
+            "x-in": "path"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\profiles.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Toggles the signed-in user's like on one community list. Returns 200 with the new state. Writes listLikes and updates the userLists like count — it TOGGLES, so a repeat call unlikes. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "generate-badge-icon",
+      "description": "Act: POST /api/generate-badge-icon",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/generate-badge-icon"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "badgeId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "prompt": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\leaderboards.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Generates a badge icon image from a `prompt` for `badgeId` and stores it. Returns the asset. Writes badgeAssets and a rateLimits counter; 429s when the caller is over quota, and each call spends an image generation. Do not call it to fetch an existing badge — use list-badge-assets or get-legacy-badges. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "list-badge-assets",
+      "description": "Read: GET /api/list-badge-assets",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/list-badge-assets"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the badge assets already generated. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-user-badges",
+      "description": "Read: GET /api/user-badges",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/user-badges"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\leaderboards.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the badges earned by the user named in `userId`. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "create-theater",
+      "description": "Act: POST /api/create-theater",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/create-theater"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "theaterName": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "storeId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "regionId": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Creates a fantasy-league theater for the signed-in manager. Send `theaterName`, `storeId` and `regionId`; returns 201. Writes theaters and seeds a managerStats doc. One theater per manager — do not call it to rename an existing one. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-theater",
+      "description": "Read: GET /api/get-theater",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/get-theater"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      },
+      "overrides": {
+        "description": "Returns the caller's theater with its current weekend lineup and manager stats, or 404 when no theater exists yet. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-available-movies",
+      "description": "Read: GET /api/available-movies",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/available-movies"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "weekendDate": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      },
+      "overrides": {
+        "description": "Returns the movies draftable for the weekend named in `weekendDate`. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "update-lineup",
+      "description": "Act: POST /api/update-lineup",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/update-lineup"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "theaterId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "screens": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Saves the weekend screen lineup for a theater. Send `theaterId` and `screens`; returns the saved lineup. Writes weekendLineups and 403s when the caller does not own the theater. It replaces the whole lineup, and it will not touch a lineup already locked by lock-lineup. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-fantasy-config",
+      "description": "Read: GET /api/fantasy-config",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/fantasy-config"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns the fantasy-league configuration constants the client needs to render the draft. Read-only, no user data. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "get-manager-leaderboard",
+      "description": "Read: GET /api/manager-leaderboard",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/manager-leaderboard"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "weekendDate": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "type": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "scope": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "storeId": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "regionId": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      },
+      "overrides": {
+        "description": "Returns the fantasy manager standings, scoped by `weekendDate`, `type`, `scope`, `storeId` and `regionId`. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "lock-lineup",
+      "description": "Act: POST /api/lock-lineup",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/lock-lineup"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "theaterId": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Locks a theater's weekend lineup so it can no longer be edited. Send `theaterId`; returns 200. Updates the weekendLineups doc and 403s for a non-owner. IRREVERSIBLE for the weekend — there is no unlock route, so never call it to \"save\" a draft."
+      }
+    },
+    {
+      "id": "calculate-weekend-results",
+      "description": "Act: POST /api/calculate-weekend-results",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/calculate-weekend-results"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "weekendDate": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      },
+      "overrides": {
+        "description": "Scores every theater's lineup for `weekendDate` and writes the results back. Returns the scoring summary. Updates weekendLineups and theaters across ALL managers — this is a league-wide batch job, not a per-user read. Run it once per weekend; a second run rescores and overwrites. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "ingest-box-office-data",
+      "description": "Act: POST /api/ingest-box-office",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/ingest-box-office"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "weekendDate": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "movies": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      },
+      "overrides": {
+        "description": "Loads the weekend box-office numbers used for scoring. Send `weekendDate` and the `movies` array; returns ok. Writes the weekendBoxOffice doc, overwriting whatever was there for that weekend. Despite the name ending in \"Data\" this is a POST that writes — get-box-office-data is the read. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-box-office-data",
+      "description": "Read: GET /api/box-office-data",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/box-office-data"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "weekendDate": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      },
+      "overrides": {
+        "description": "Returns the stored box-office numbers for `weekendDate`. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "calculate-results-with-real-data",
+      "description": "Act: POST /api/calculate-results-with-real-data",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/calculate-results-with-real-data"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "weekendDate": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\fantasy.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      },
+      "overrides": {
+        "description": "Rescores the league for `weekendDate` against the ingested real box-office numbers rather than projections. Updates weekendLineups and theaters league-wide. Requires ingest-box-office-data to have run for that weekend first; a second run overwrites the prior scoring. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "ingest-trivia-questions",
+      "description": "Act: POST /api/trivia/ingest",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/trivia/ingest"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "difficulty": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\trivia.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\trivia.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Generates and stores trivia questions for a `category` at a `difficulty`, up to `limit`. Returns the count written. Writes triviaQuestions and can 502 when the upstream model fails; each call spends a generation, so never use it as a read. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-trivia-questions",
+      "description": "Read: GET /api/trivia/questions",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/trivia/questions"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "difficulty": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "personality": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\trivia.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\trivia.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns stored trivia questions filtered by `category`, `difficulty`, `personality` and `limit`. Read-only. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "generate-trivia-variations",
+      "description": "Act: POST /api/trivia/generate-variations",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/trivia/generate-variations"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "questionIds": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "personality": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\trivia.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\trivia.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Rewrites existing questions named in `questionIds` into a `personality` voice, up to `limit`. Returns the variations and updates the triviaQuestions docs. Spends a model generation per call. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-trivia-personalities",
+      "description": "Read: GET /api/trivia/personalities",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/trivia/personalities"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\trivia.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns the list of trivia personality voices available. Read-only, static config. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "parse-knowledge-base",
+      "description": "Act: POST /api/knowledge/parse",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/parse"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "overwrite": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Batch-parses up to `limit` raw knowledge entries into structured trivia questions; `overwrite` replaces existing parses. Writes triviaQuestions. A long-running admin batch — never call it inline in a user request path. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-film-knowledge",
+      "description": "Read: GET /api/knowledge/film",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/film"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns the knowledge-base entry for a film `title`, up to `limit` results, or 404 when unknown. Read-only. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "get-tv-knowledge",
+      "description": "Read: GET /api/knowledge/tv",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/tv"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns the knowledge-base entry for a TV `title`, up to `limit` results, or 404 when unknown. Read-only. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "search-knowledge",
+      "description": "Read: GET /api/knowledge/search",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/search"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "type": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Searches film and TV knowledge for the query `q`, narrowed by `type` and `limit`. Read-only. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "get-knowledge-stats",
+      "description": "Read: GET /api/knowledge/stats",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/stats"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns coverage counts over the knowledge base, served from gameCache. Read-only to callers; refills the cache doc on a miss. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "add-to-knowledge",
+      "description": "Act: POST /api/knowledge/add",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/add"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "type": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "question": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "correctAnswer": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "incorrectAnswers": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "difficulty": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Adds one curated question to the knowledge base. Send `title`, `type`, `question`, `correctAnswer`, `incorrectAnswers` and `difficulty`; returns 201. Writes the knowledge doc. For a user-contributed question that still needs review, use submit-question. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "review-orphaned-questions",
+      "description": "Read: GET /api/knowledge/review",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/review"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns trivia questions that match no film or TV knowledge entry, up to `limit`, for admin triage. Read-only to the caller. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "assign-to-knowledge",
+      "description": "Act: POST /api/knowledge/assign",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/assign"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "title": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "type": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Attaches the orphaned question `questionId` to the knowledge entry named by `title` and `type`. Returns 200 and updates the triviaQuestions doc. 404s when the question is gone. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "submit-question",
+      "description": "Act: POST /api/knowledge/submit",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/submit"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "type": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "question": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "correctAnswer": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "incorrectAnswers": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "difficulty": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "source": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Submits a user-authored trivia question for review. Send `title`, `type`, `question`, `correctAnswer`, `incorrectAnswers`, `difficulty` and `source`; returns 201. Writes questionSubmissions — it does NOT publish; review-submission does. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-submissions",
+      "description": "Read: GET /api/knowledge/submissions",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/submissions"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns pending question submissions filtered by `status` and `limit`. Read-only. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "review-submission",
+      "description": "Act: POST /api/knowledge/submissions/review",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/submissions/review"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "submissionId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "action": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "rejectionReason": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Approves or rejects the submission `submissionId` via `action`, with `rejectionReason` on a reject. Returns 200. Approving publishes the question into the bank; rejecting is not reversible from the API. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "report-knowledge-issue",
+      "description": "Act: POST /api/knowledge/report",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/report"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "title": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "type": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "issueType": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "description": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Reports a problem with a knowledge entry or question. Send `questionId`, `title`, `type`, `issueType` and `description`; returns 201. Writes knowledgeIssues; it does not change the question. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-knowledge-issues",
+      "description": "Read: GET /api/knowledge/issues",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/issues"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns reported knowledge issues filtered by `status` and `limit`. Read-only. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "resolve-knowledge-issue",
+      "description": "Act: POST /api/knowledge/issues/resolve",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/issues/resolve"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "issueId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "action": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "resolution": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "deleteQuestion": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\knowledge.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Closes the issue `issueId` with `action` and `resolution`, and optionally sets `deleteQuestion` to remove the underlying question. Returns 200. DESTRUCTIVE when `deleteQuestion` is true — the question is gone and no route restores it. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "update-question-stats",
+      "description": "Act: POST /api/update-question-stats",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/update-question-stats"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "questionResults": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Records per-question correctness stats after a quiz. Send `movieId` and `questionResults`; returns 200. Updates the movieQuizzes doc. Called by the quiz flow — do not call it by hand, it skews the shared question bank. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-question-bank-stats",
+      "description": "Read: GET /api/question-bank-stats",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/question-bank-stats"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieId": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns question-bank health for `movieId`: how many questions exist and how they perform. Read-only. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "get-shared-questions",
+      "description": "Read: GET /api/shared-questions",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/shared-questions"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieTitle": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "movieId": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "count": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "minCorrectRate": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "isKidMode": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns cached questions for a movie so a quiz can be served without generating one. Filter with `movieTitle`, `movieId`, `count`, `minCorrectRate` and `isKidMode`. Prefer this over generate-quiz whenever a cached set exists — it costs nothing. Bumps a serve counter on the movieQuizzes doc. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "get-challenges",
+      "description": "Read: GET /api/challenges",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/challenges"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-open: expected 401/403, got 200"
+      },
+      "overrides": {
+        "description": "Returns the active challenge list. DECLARES a token requirement, but the last verify run answered an unauthenticated caller (auth-gate-open) — treat this route as PUBLIC until that is fixed, and never assume the gate holds. Read-only."
+      }
+    },
+    {
+      "id": "get-my-challenges",
+      "description": "Read: GET /api/my-challenges",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/my-challenges"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the signed-in user's own challenge progress. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "join-challenge",
+      "description": "Act: POST /api/join-challenge",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/join-challenge"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\challenges.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Enrolls the signed-in user in the challenge `challengeId`. Returns 200 and writes a userChallenges doc; 404s when the challenge is gone. Joining is not undoable through the API. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "claim-challenge-reward",
+      "description": "Act: POST /api/claim-challenge-reward",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/claim-challenge-reward"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\challenges.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Claims the reward for the completed challenge `challengeId`. Returns 200, updates userChallenges and credits the users doc. Only call it once a challenge is genuinely complete — it grants points. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "create-challenge",
+      "description": "Act: POST /api/admin/create-challenge",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/create-challenge"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "type": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "startDate": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "endDate": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "featured": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "overrides": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\challenges.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Creates a challenge from `templateId` with `type`, `startDate`, `endDate`, `featured` and any `overrides`. Returns 200 and writes the challenges doc, which makes it live for every user. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-challenge-templates",
+      "description": "Read: GET /api/challenge-templates",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/challenge-templates"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the challenge templates available to create-challenge. Read-only. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "get-waitlist",
+      "description": "Read: GET /api/admin/waitlist",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/waitlist"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns users awaiting approval. Read-only. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "approve-user",
+      "description": "Act: POST /api/admin/approve",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/approve"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "role": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationName": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationCity": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationRegion": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\admin\\userManagement.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Approves the waitlisted user `userId` and assigns `role`, `locationId`, `locationName`, `locationCity` and `locationRegion`. Returns 200 and updates the users doc, which grants them access to the app. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "reject-user",
+      "description": "Act: POST /api/admin/reject",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/reject"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "reason": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\admin\\userManagement.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Rejects the waitlisted user `userId` with a `reason`. Returns 200 and updates the users doc, denying them access. There is no un-reject route. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "set-initial-location",
+      "description": "Act: POST /api/set-initial-location",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/set-initial-location"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationName": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationCity": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "locationRegion": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\profiles.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Sets the signed-in user's location the first time they onboard. Send `locationId`, `locationName`, `locationCity` and `locationRegion`; returns 200. Updates the caller's own users doc and 429s when repeated — for an admin changing someone else's location, use update-user-location. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "save-bacon-trail",
+      "description": "Act: POST /api/save-bacon-trail",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/save-bacon-trail"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "startingActorId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "startingActorName": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "steps": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "trail": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "won": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "date": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\cinema.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Saves one completed Bacon-trail game run. Send `startingActorId`, `startingActorName`, `steps`, `trail`, `won` and `date`; returns 200. Writes a baconTrailResults doc and updates the user. One write per finished run — replaying it inflates the leaderboard. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-bacon-trail-leaderboard",
+      "description": "Read: GET /api/bacon-trail-leaderboard",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/bacon-trail-leaderboard"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\cinema.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the Bacon-trail standings for `date`, capped by `limit`. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-actors-born-today",
+      "description": "Read: GET /api/actors-born-today",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/actors-born-today"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "requireBaconNumber": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\content\\cinema.js"
+      },
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Returns actors with today's birthday, capped by `limit` and optionally narrowed by `requireBaconNumber`. Read-only. Open: the handler runs no auth check, so it answers any caller."
+      }
+    },
+    {
+      "id": "get-actor-database-stats",
+      "description": "Read: GET /api/actor-database-stats",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/actor-database-stats"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns coverage counts over the actor database. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-tagline-session",
+      "description": "Read: GET /api/getTaglineSession",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/getTaglineSession"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\tagline.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns a tagline-game session for the signed-in user, served from gameCache. Read-only to the caller; materializes the session doc on a miss, so two calls can hand back two different sessions. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "submit-tagline-result",
+      "description": "Act: POST /api/submitTaglineResult",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/submitTaglineResult"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "totalQuestions": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "results": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\tagline.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\tagline.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Records the result of a tagline-game session. Send `score`, `totalQuestions` and `results`; returns 200. One submission per session. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-legacy-badges",
+      "description": "Read: GET /api/get-legacy-badges",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/get-legacy-badges"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "badgeId": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\leaderboards.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the archived legacy badge assets for `badgeId`. Read-only. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "restore-legacy-badge",
+      "description": "Act: POST /api/restore-legacy-badge",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/restore-legacy-badge"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "badgeId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "legacyId": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\social\\leaderboards.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Restores the archived legacy asset `legacyId` back onto `badgeId`. Returns 200 and writes badgeAssets, replacing the badge's current image. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "get-movie-questions",
+      "description": "Read: GET /api/movie-questions",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/movie-questions"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieId": {
+            "type": "unknown",
+            "x-in": "query"
+          },
+          "search": {
+            "type": "unknown",
+            "x-in": "query"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Returns the question bank for `movieId`, or the movies matching `search`, for admin curation. Read-only. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "manage-question",
+      "description": "Act: POST /api/manage-question",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/manage-question"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "movieId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "questionId": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "action": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "updates": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\games\\quiz.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Edits or removes one question in a movie's bank. Send `movieId`, `questionId`, `action` and `updates`; returns 200. Updates the movieQuizzes doc; a delete `action` is not reversible. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "create-invite",
+      "description": "Act: POST /api/admin/invites",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/invites"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "unknown",
+            "x-in": "body"
+          },
+          "role": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\admin\\userManagement.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Creates an invite for `email` with the given `role`. Returns 200 and writes an invites doc, which lets that address register. Requires a Firebase ID token AND an admin role on the user doc; non-admins get 403."
+      }
+    },
+    {
+      "id": "generate-anagrams-batch",
+      "description": "Act: POST /api/admin/generate-anagrams",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/generate-anagrams"
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "unknown",
+            "x-in": "body"
+          }
+        },
+        "x-mined-by": "reads",
+        "x-mined-from": "functions\\src\\anagrams\\pipeline.js"
+      },
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\anagrams\\pipeline.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      },
+      "overrides": {
+        "description": "Generates the anagram set for the film `title` used by the word game. Returns the generated batch and 403s outside the allowed caller. Each call spends a generation — do not use it as a read. Requires a Firebase ID token in `Authorization: Bearer`."
+      }
+    },
+    {
+      "id": "agent-seed",
+      "description": "Dev-only: seed one test user (agent-test-user), three quizAttempts docs, and one pointHistory row with fixed ids for agent-driven verification. 404s outside the emulator/dev gate.",
+      "tier": "dev",
+      "kind": "seed",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/agent/seed"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\agent-access\\agent-seed.js",
+      "origin": "scaffolded",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Dev-only: seeds one test user (agent-test-user), three quizAttempts docs, and one pointHistory row with fixed ids so an agent can verify against known data. 404s outside the emulator/dev gate, and it is never reachable in prod. Not for use against real user data."
+      }
+    }
+  ]
+}

@@ -16,6 +16,11 @@ Load skills/guide/SKILL.md first. Then inspect the target app, first match wins:
    affordance is `unverified` or `fail` → recommend `/vibe-access:verify`.
 5. Manifest fully verified → report posture: affordance count by tier/kind, last verify
    date, and note the layer is MCP-graduation-ready (manual step, out of v0.1 scope).
+6. At any point from step 4 on, if most affordances still carry the machine-template
+   description map generated (`Act: POST /api/lists`), recommend `/vibe-access:describe`
+   and say the count out loud. A verified manifest full of templates is a proven surface
+   nobody can read: the gate holds, and the agent on the other side still cannot tell
+   what the tool does. Proof and documentation are two different holes.
 
 Always end with the one recommended command and why. Use AskUserQuestion when the
 user's intent is ambiguous. Never run scaffold or verify without the user asking.
