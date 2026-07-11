@@ -424,7 +424,10 @@ function buildFindings(tools, { source, discoveryRoute, validationErrors, counts
 
   const errorFiles = new Map();
   for (const t of tools.filter((x) => x.verification.class === 'error')) {
-    const key = t.provenance.sourceRef ?? '(no source)';
+    // Key on the file, not the ref: a line number is not a subsystem. RoRoRo-shaped refs
+    // carry :NN suffixes, which would otherwise fragment one dead file into one card per line
+    // (and, since the id derives from the basename, collide every fragment onto one anchor).
+    const key = (t.provenance.sourceRef ?? '(no source)').replace(/:\d+$/, '');
     if (!errorFiles.has(key)) errorFiles.set(key, []);
     errorFiles.get(key).push(t);
   }

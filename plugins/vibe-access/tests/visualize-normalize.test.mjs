@@ -316,6 +316,30 @@ describe('normalize — ROROROblox (17 affordances, gRPC wearing an http label)'
     expect(r.annotations.idempotent.provenance).toBe('unclaimed');
     expect(view.counts.withDeclaredAnnotation).toBe(0);
   });
+
+  test('two failures in one file, different line refs, cluster into ONE card', () => {
+    const wounded = JSON.parse(JSON.stringify(RORO));
+    for (const a of wounded.affordances) {
+      if (a.id === 'handshake')
+        a.verified = { status: 'fail', at: RENDERED_AT, runId: 'x', detail: 'connect ECONNREFUSED' };
+      if (a.id === 'get-host-info')
+        a.verified = { status: 'fail', at: RENDERED_AT, runId: 'x', detail: 'unexpected 500' };
+    }
+    // Same proto file, different :NN suffixes — the line number is not a subsystem.
+    const refs = wounded.affordances
+      .filter((a) => a.id === 'handshake' || a.id === 'get-host-info')
+      .map((a) => a.sourceRef);
+    expect(refs[0]).not.toBe(refs[1]);
+
+    const hurt = normalize(wounded, opts);
+    const clusters = hurt.findings.filter((f) => f.severity === 'error-cluster');
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0].toolRefs.sort()).toEqual(['get-host-info', 'handshake']);
+    expect(clusters[0].id).toBe('error-cluster:plugin_contract');
+    expect(clusters[0].anchor).toBe('#error-cluster:plugin_contract');
+    expect(clusters[0].body).not.toMatch(/plugin_contract\.proto:\d+/);
+    expect(new Set(hurt.findings.map((f) => f.id)).size).toBe(hurt.findings.length);
+  });
 });
 
 describe('normalize — MCP tools/list', () => {
