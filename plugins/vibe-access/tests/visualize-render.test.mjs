@@ -498,3 +498,65 @@ describe('the filter is the print filter (§9) — it must hide the RIGHT index 
     }
   });
 });
+
+describe('graft 10 — the text filter searches name+purpose+method+path, not the whole card (§6.1)', () => {
+  test('every card carries a data-search index of exactly those four fields', () => {
+    const v = view(WSY);
+    expect(count(WSY_HTML, ' data-search="')).toBe(v.tools.length);
+    const t = v.tools[0];
+    const idx = WSY_HTML.split(`id="tool-${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}"`)[1] ?? '';
+    expect(idx.slice(0, 400)).toContain('data-search="');
+  });
+
+  test('match() reads the index, never the rendered textContent', () => {
+    // c.textContent swept in the curl block, the tools/call envelope, the annotations table and
+    // the footer sourceRef: `unknown` hit 85/85, `token` 70/85, `post` 40/85 on this fixture.
+    expect(WSY_HTML).toContain('c.dataset.search');
+    expect(WSY_HTML).not.toContain('var t=c.textContent.toLowerCase()');
+  });
+
+  test('regression — the over-matching terms are not in the search index of every card', () => {
+    const idx = [...WSY_HTML.matchAll(/data-search="([^"]*)"/g)].map((m) => m[1]);
+    expect(idx.length).toBe(85);
+    // These are call-block / footer noise. They must not be indexed on cards that do not name them.
+    expect(idx.filter((s) => s.includes('unknown')).length).toBe(0);
+    expect(idx.filter((s) => s.includes('bearer')).length).toBe(0);
+    // A real term still finds its tools.
+    expect(idx.filter((s) => s.includes('admin')).length).toBeGreaterThan(0);
+    // Index is lowercased — a case-folded query works.
+    for (const s of idx) expect(s).toBe(s.toLowerCase());
+  });
+});
+
+describe('graft 11 — the filter bar ships all 8 chips of §6.1 band 3', () => {
+  test('Open · Destructive · Failed · Undocumented · Dev-only · Act · Read · verify-class', () => {
+    for (const f of ['open', 'destructive', 'failed', 'undocumented', 'dev', 'act', 'read']) {
+      expect(WSY_HTML).toContain(`data-filter="${f}"`);
+    }
+    expect(WSY_HTML).toMatch(/data-filter="v:[a-z-]+"/);
+    expect(WSY_HTML).toContain('Dev-only');
+  });
+
+  test('the tier axis is IN THE DOM — Dev-only cannot filter what the card never carried', () => {
+    // WSY: exactly 1 of 85 affordances is tier: dev (agent-seed). That needle is the chip.
+    expect(count(WSY_HTML, 'data-tier="dev"')).toBe(1);
+    expect(count(WSY_HTML, 'data-tier="prod-safe"')).toBe(84);
+    expect(WSY_HTML).toContain("c.dataset.tier!=='dev'");
+  });
+
+  test('act / read / verify-class predicates read the attributes the card already carries', () => {
+    expect(WSY_HTML).toContain("c.dataset.kind!=='act'");
+    expect(WSY_HTML).toContain("c.dataset.kind!=='read'");
+    expect(WSY_HTML).toContain("'v:'+c.dataset.vclass");
+  });
+
+  test('a verify-class chip is emitted only for classes the surface actually contains', () => {
+    const v = view(WSY);
+    const present = new Set(v.tools.map((t) => t.verification.class));
+    const chips = new Set(
+      [...WSY_HTML.matchAll(/data-filter="v:([a-z-]+)"/g)].map((m) => m[1])
+    );
+    expect(chips).toEqual(present);
+    expect(chips.size).toBeGreaterThan(0);
+  });
+});

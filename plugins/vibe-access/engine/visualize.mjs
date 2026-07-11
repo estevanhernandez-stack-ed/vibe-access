@@ -1043,6 +1043,17 @@ const BLOCK_LABELS = [
   ['call', 'THE CALL'],
 ];
 
+// The text filter's index, and the ONLY thing it reads (§6.1: name+purpose+path).
+// Searching the rendered card instead swept in the curl block, the tools/call envelope, the
+// annotations table and the footer sourceRef — `unknown` matched 85/85 cards, `token` 70/85.
+// A filter that matches everything is not a filter, and it poisons the print scope (D12).
+function searchIndex(t) {
+  return [t.name, t.purpose, t.transport.method, t.transport.path]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
 function renderCard(t, surface, opts) {
   const bodies = {
     purpose: purposeBlock(t, opts),
@@ -1068,7 +1079,7 @@ function renderCard(t, surface, opts) {
       : '';
   const id = slug(t.name);
   return [
-    `<article class="card" id="tool-${escAttr(id)}" data-kind="${escAttr(t.kind ?? '')}" data-auth="${escAttr(t.consent.mode ?? '')}" data-vclass="${escAttr(t.verification.class)}">`,
+    `<article class="card" id="tool-${escAttr(id)}" data-kind="${escAttr(t.kind ?? '')}" data-tier="${escAttr(t.tier ?? '')}" data-auth="${escAttr(t.consent.mode ?? '')}" data-vclass="${escAttr(t.verification.class)}" data-search="${escAttr(searchIndex(t))}">`,
     `<header class="card-h"><code class="tname">${wbr(t.name)}</code><a class="anchor no-print" href="#tool-${escAttr(id)}" title="link to this tool">#</a><span class="rail">${chipsOf(t)}</span></header>`,
     route,
     prereq,
@@ -1154,6 +1165,15 @@ function indexBand(surface) {
     '<button type="button" class="f" data-filter="destructive">Destructive</button>',
     '<button type="button" class="f" data-filter="failed">Failed</button>',
     '<button type="button" class="f" data-filter="undocumented">Undocumented</button>',
+    '<button type="button" class="f" data-filter="dev">Dev-only</button>',
+    '<button type="button" class="f" data-filter="act">Act</button>',
+    '<button type="button" class="f" data-filter="read">Read</button>',
+    // The verify-class axis, one chip per class the surface ACTUALLY contains. Selecting
+    // several ORs them. handle-gate-held gets its own chip and is never folded into
+    // gate-held — the honesty rule holds in the filter bar too, not just the math.
+    ...[...new Set(surface.tools.map((t) => t.verification.class))].map(
+      (c) => `<button type="button" class="f" data-filter="v:${escAttr(c)}">${esc(c)}</button>`
+    ),
     '<button type="button" id="density">density: cards / rows</button>',
     '</div>',
     '<p class="print-filter">FILTERED VIEW</p>',
@@ -1445,13 +1465,20 @@ const JS = `
   var active={};
   var writing=false;
   function match(c){
-    var t=c.textContent.toLowerCase();
+    // The index is name+purpose+method+path (data-search). Never c.textContent — that reads the
+    // curl block, the tools/call envelope and the footer, and matches nearly every card.
+    var t=c.dataset.search||'';
     var term=q&&q.value?q.value.toLowerCase():'';
     if(term&&t.indexOf(term)<0)return false;
     if(active.open&&c.dataset.auth!=='none')return false;
     if(active.destructive&&c.innerHTML.indexOf('DESTRUCTIVE')<0)return false;
     if(active.failed&&c.dataset.vclass!=='error'&&c.dataset.vclass!=='open')return false;
     if(active.undocumented&&c.innerHTML.indexOf('UNDOCUMENTED')<0)return false;
+    if(active.dev&&c.dataset.tier!=='dev')return false;
+    if(active.act&&c.dataset.kind!=='act')return false;
+    if(active.read&&c.dataset.kind!=='read')return false;
+    var vc=Object.keys(active).filter(function(k){return active[k]&&k.indexOf('v:')===0;});
+    if(vc.length&&vc.indexOf('v:'+c.dataset.vclass)<0)return false;
     return true;
   }
   // View state — filters, text query, density — lives in the URL hash, so "send me just the
