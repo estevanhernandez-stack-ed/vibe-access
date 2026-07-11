@@ -1,0 +1,1871 @@
+{
+  "schemaVersion": 1,
+  "app": "WeSeeYouAtTheMovies",
+  "adapter": "firebase-functions",
+  "generatedAt": "2026-07-09T22:00:58.442Z",
+  "baseUrls": {
+    "dev": "http://localhost:5000"
+  },
+  "discoveryRoute": null,
+  "affordances": [
+    {
+      "id": "generate-quiz",
+      "description": "Act: POST /api/generate-quiz",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/generate-quiz"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "save-quiz-result",
+      "description": "Act: POST /api/save-quiz-result",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/save-quiz-result"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "report-question",
+      "description": "Act: POST /api/report-question",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/report-question"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "add-to-watched",
+      "description": "Act: POST /api/add-to-watched",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/add-to-watched"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "submit-score",
+      "description": "Act: POST /api/submit-score",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/submit-score"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "add-to-want-to-see",
+      "description": "Act: POST /api/add-to-want-to-see",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/add-to-want-to-see"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-user-profile",
+      "description": "Read: GET /api/profile",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/profile"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-leaderboard",
+      "description": "Read: GET /api/leaderboard",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/leaderboard"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-my-rank",
+      "description": "Read: GET /api/my-rank",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/my-rank"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "screening-events",
+      "description": "Act: POST /api/screening-events",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/screening-events"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\events\\screening.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "verify-ticket",
+      "description": "Act: POST /api/verify-ticket",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/verify-ticket"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\events\\screening.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-admin-stats",
+      "description": "Read: GET /api/admin/stats",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/stats"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-admin-users",
+      "description": "Read: GET /api/admin/users",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/users"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "update-user-role",
+      "description": "Act: PATCH /api/admin/users/*/role",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "PATCH",
+        "path": "/api/admin/users/*/role"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "update-user-location",
+      "description": "Act: PATCH /api/admin/users/*/location",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "PATCH",
+        "path": "/api/admin/users/*/location"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-admin-events",
+      "description": "Read: GET /api/admin/events",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/events"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "update-event-status",
+      "description": "Act: PATCH /api/admin/events/*/status",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "PATCH",
+        "path": "/api/admin/events/*/status"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\events\\screening.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-recent-quiz-activity",
+      "description": "Read: GET /api/recent-quiz-activity",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/recent-quiz-activity"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "get-this-day-in-cinema",
+      "description": "Read: GET /api/this-day-in-cinema",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/this-day-in-cinema"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "get-my-quiz-history",
+      "description": "Read: GET /api/my-quiz-history",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/my-quiz-history"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-quiz-analytics",
+      "description": "Read: GET /api/admin/quiz-analytics",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/quiz-analytics"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-my-lists",
+      "description": "Read: GET /api/my-lists",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/my-lists"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "create-or-update-list",
+      "description": "Act: POST /api/my-lists/*",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/my-lists/*"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-unlock-progress",
+      "description": "Read: GET /api/unlock-progress",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/unlock-progress"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-user-lists",
+      "description": "Read: GET /api/users/*/lists",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/users/*/lists"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 404"
+      }
+    },
+    {
+      "id": "get-community-lists",
+      "description": "Read: GET /api/community-lists",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/community-lists"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "like-list",
+      "description": "Act: POST /api/lists/*/*/like",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/lists/*/*/like"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "generate-badge-icon",
+      "description": "Act: POST /api/generate-badge-icon",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/generate-badge-icon"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "list-badge-assets",
+      "description": "Read: GET /api/list-badge-assets",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/list-badge-assets"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-user-badges",
+      "description": "Read: GET /api/user-badges",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/user-badges"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "create-theater",
+      "description": "Act: POST /api/create-theater",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/create-theater"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-theater",
+      "description": "Read: GET /api/get-theater",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/get-theater"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      }
+    },
+    {
+      "id": "get-available-movies",
+      "description": "Read: GET /api/available-movies",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/available-movies"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      }
+    },
+    {
+      "id": "update-lineup",
+      "description": "Act: POST /api/update-lineup",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/update-lineup"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-fantasy-config",
+      "description": "Read: GET /api/fantasy-config",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/fantasy-config"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "get-manager-leaderboard",
+      "description": "Read: GET /api/manager-leaderboard",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/manager-leaderboard"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      }
+    },
+    {
+      "id": "lock-lineup",
+      "description": "Act: POST /api/lock-lineup",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/lock-lineup"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "calculate-weekend-results",
+      "description": "Act: POST /api/calculate-weekend-results",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/calculate-weekend-results"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      }
+    },
+    {
+      "id": "ingest-box-office-data",
+      "description": "Act: POST /api/ingest-box-office",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/ingest-box-office"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      }
+    },
+    {
+      "id": "get-box-office-data",
+      "description": "Read: GET /api/box-office-data",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/box-office-data"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      }
+    },
+    {
+      "id": "calculate-results-with-real-data",
+      "description": "Act: POST /api/calculate-results-with-real-data",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/calculate-results-with-real-data"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\fantasy.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "unexpected 500"
+      }
+    },
+    {
+      "id": "ingest-trivia-questions",
+      "description": "Act: POST /api/trivia/ingest",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/trivia/ingest"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\trivia.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-trivia-questions",
+      "description": "Read: GET /api/trivia/questions",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/trivia/questions"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\trivia.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "generate-trivia-variations",
+      "description": "Act: POST /api/trivia/generate-variations",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/trivia/generate-variations"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\trivia.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-trivia-personalities",
+      "description": "Read: GET /api/trivia/personalities",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/trivia/personalities"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\trivia.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "parse-knowledge-base",
+      "description": "Act: POST /api/knowledge/parse",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/parse"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-film-knowledge",
+      "description": "Read: GET /api/knowledge/film",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/film"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "get-tv-knowledge",
+      "description": "Read: GET /api/knowledge/tv",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/tv"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "search-knowledge",
+      "description": "Read: GET /api/knowledge/search",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/search"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "get-knowledge-stats",
+      "description": "Read: GET /api/knowledge/stats",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/stats"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "add-to-knowledge",
+      "description": "Act: POST /api/knowledge/add",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/add"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "review-orphaned-questions",
+      "description": "Read: GET /api/knowledge/review",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/review"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "assign-to-knowledge",
+      "description": "Act: POST /api/knowledge/assign",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/assign"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "submit-question",
+      "description": "Act: POST /api/knowledge/submit",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/submit"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-submissions",
+      "description": "Read: GET /api/knowledge/submissions",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/submissions"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "review-submission",
+      "description": "Act: POST /api/knowledge/submissions/review",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/submissions/review"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "report-knowledge-issue",
+      "description": "Act: POST /api/knowledge/report",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/report"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-knowledge-issues",
+      "description": "Read: GET /api/knowledge/issues",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/knowledge/issues"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "resolve-knowledge-issue",
+      "description": "Act: POST /api/knowledge/issues/resolve",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/knowledge/issues/resolve"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\knowledge.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "update-question-stats",
+      "description": "Act: POST /api/update-question-stats",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/update-question-stats"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-question-bank-stats",
+      "description": "Read: GET /api/question-bank-stats",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/question-bank-stats"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "get-shared-questions",
+      "description": "Read: GET /api/shared-questions",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/shared-questions"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "get-challenges",
+      "description": "Read: GET /api/challenges",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/challenges"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "fail",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-open: expected 401/403, got 200"
+      }
+    },
+    {
+      "id": "get-my-challenges",
+      "description": "Read: GET /api/my-challenges",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/my-challenges"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "join-challenge",
+      "description": "Act: POST /api/join-challenge",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/join-challenge"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "claim-challenge-reward",
+      "description": "Act: POST /api/claim-challenge-reward",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/claim-challenge-reward"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "create-challenge",
+      "description": "Act: POST /api/admin/create-challenge",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/create-challenge"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-challenge-templates",
+      "description": "Read: GET /api/challenge-templates",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/challenge-templates"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\challenges.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-waitlist",
+      "description": "Read: GET /api/admin/waitlist",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/admin/waitlist"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "approve-user",
+      "description": "Act: POST /api/admin/approve",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/approve"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "reject-user",
+      "description": "Act: POST /api/admin/reject",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/reject"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "set-initial-location",
+      "description": "Act: POST /api/set-initial-location",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/set-initial-location"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\profiles.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "save-bacon-trail",
+      "description": "Act: POST /api/save-bacon-trail",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/save-bacon-trail"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-bacon-trail-leaderboard",
+      "description": "Read: GET /api/bacon-trail-leaderboard",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/bacon-trail-leaderboard"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-actors-born-today",
+      "description": "Read: GET /api/actors-born-today",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/actors-born-today"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      }
+    },
+    {
+      "id": "get-actor-database-stats",
+      "description": "Read: GET /api/actor-database-stats",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/actor-database-stats"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\content\\cinema.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-tagline-session",
+      "description": "Read: GET /api/getTaglineSession",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/getTaglineSession"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\tagline.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "submit-tagline-result",
+      "description": "Act: POST /api/submitTaglineResult",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/submitTaglineResult"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\tagline.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-legacy-badges",
+      "description": "Read: GET /api/get-legacy-badges",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/get-legacy-badges"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "restore-legacy-badge",
+      "description": "Act: POST /api/restore-legacy-badge",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/restore-legacy-badge"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\social\\leaderboards.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "get-movie-questions",
+      "description": "Read: GET /api/movie-questions",
+      "tier": "prod-safe",
+      "kind": "read",
+      "transport": {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/movie-questions"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "manage-question",
+      "description": "Act: POST /api/manage-question",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/manage-question"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\games\\quiz.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "create-invite",
+      "description": "Act: POST /api/admin/invites",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/invites"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\admin\\userManagement.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "generate-anagrams-batch",
+      "description": "Act: POST /api/admin/generate-anagrams",
+      "tier": "prod-safe",
+      "kind": "act",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/admin/generate-anagrams"
+      },
+      "input": null,
+      "output": null,
+      "auth": "token",
+      "sourceRef": "functions\\src\\anagrams\\pipeline.js",
+      "origin": "existing",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359",
+        "detail": "auth-gate-held"
+      }
+    },
+    {
+      "id": "agent-seed",
+      "description": "Dev-only: seed one test user (agent-test-user), three quizAttempts docs, and one pointHistory row with fixed ids for agent-driven verification. 404s outside the emulator/dev gate.",
+      "tier": "dev",
+      "kind": "seed",
+      "transport": {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/agent/seed"
+      },
+      "input": null,
+      "output": null,
+      "auth": "none",
+      "sourceRef": "functions\\src\\agent-access\\agent-seed.js",
+      "origin": "scaffolded",
+      "verified": {
+        "status": "pass",
+        "at": "2026-07-09T22:10:42.833Z",
+        "runId": "c9643359"
+      },
+      "overrides": {
+        "description": "Dev-only: seed one test user (agent-test-user), three quizAttempts docs, and one pointHistory row with fixed ids for agent-driven verification. 404s outside the emulator/dev gate."
+      }
+    }
+  ]
+}

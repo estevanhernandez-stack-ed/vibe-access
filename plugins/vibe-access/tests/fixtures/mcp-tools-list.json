@@ -1,0 +1,191 @@
+{
+  "tools": [
+    {
+      "name": "manage_projects",
+      "description": "Create, read, update, archive, and look up 626Labs projects. Discriminated by `action`. Use `findByRepo` at session start to bind the current git remote to a dashboard project — the server normalizes SSH/HTTPS/.git/case variants to one canonical form, so pass the raw remote URL. Returns { found, matchType, count, matches[] }; matchType is exact | basename | none.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["list", "get", "create", "update", "archive", "findByRepo", "linkRepo"],
+            "description": "Which operation to perform."
+          },
+          "projectId": {
+            "type": "string",
+            "description": "Target project id. Required for get, update, archive, linkRepo."
+          },
+          "name": { "type": "string", "description": "Project name. Required for create." },
+          "description": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["planning", "active", "paused", "shipped", "archived"]
+          },
+          "repoUrl": {
+            "type": "string",
+            "description": "Git remote URL. Required for findByRepo and linkRepo."
+          },
+          "version": { "type": "string", "description": "Shipped version, e.g. 1.2.0." }
+        },
+        "required": ["action"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "manage_tasks",
+      "description": "Create, update, complete, and delete tasks on a project. Discriminated by `action`. There is no list action here — use project_context with action=listTasks to read a backlog.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["create", "update", "complete", "delete"]
+          },
+          "projectId": { "type": "string" },
+          "taskId": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "status": { "type": "string", "enum": ["todo", "in_progress", "blocked", "done"] }
+        },
+        "required": ["action"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "manage_decisions",
+      "description": "Log and search architectural decisions. `log` records a fork in the road (choice, alternatives, reasoning, impact); `search` does semantic lookup across the decision history. Unbound decisions pass projectId: null.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["log", "search", "get", "update"] },
+          "projectId": { "type": ["string", "null"] },
+          "title": { "type": "string" },
+          "decision": { "type": "string", "description": "What was decided." },
+          "reasoning": { "type": "string", "description": "Why. The part future-you actually needs." },
+          "alternatives": { "type": "array", "items": { "type": "string" } },
+          "impact": { "type": "string", "enum": ["low", "medium", "high"] },
+          "query": { "type": "string", "description": "Search text. Required for search." }
+        },
+        "required": ["action"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "project_context",
+      "description": "Read-only context for one project: summary, open tasks, recent decisions, health. Discriminated by `action` — listTasks is the canonical way to pull a backlog.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["summary", "listTasks", "listDecisions", "health"]
+          },
+          "projectId": { "type": "string" },
+          "limit": { "type": "number", "description": "Max rows to return. Defaults to 20." }
+        },
+        "required": ["action", "projectId"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "get_recent_activity",
+      "description": "Cross-project activity digest since a timestamp.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "since": {
+            "type": "string",
+            "description": "ISO-8601 timestamp. Defaults to 7 days ago."
+          },
+          "projectId": { "type": "string" }
+        },
+        "required": []
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "bridge_context_to_architect",
+      "description": "Send session context to the dashboard's strategic Architect AI.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string" },
+          "context": { "type": "string", "description": "What the strategic layer needs to know." },
+          "urgency": { "type": "string", "enum": ["fyi", "needs_input", "blocking"] }
+        },
+        "required": ["context"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "manage_milestones",
+      "description": "Milestone CRUD.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["list", "create", "update", "delete"] },
+          "projectId": { "type": "string" },
+          "milestoneId": { "type": "string" },
+          "title": { "type": "string" },
+          "dueDate": { "type": "string" }
+        },
+        "required": ["action"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "seed_gold_standard",
+      "description": "Seed the gold-standard evaluation dataset into a scratch project. Destructive against existing seeded rows — it replaces them. Never point this at a live project.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string" },
+          "dataset": { "type": "string", "enum": ["projects", "tasks", "decisions", "all"] },
+          "confirm": {
+            "type": "boolean",
+            "description": "Must be true. Guard against accidental invocation."
+          }
+        },
+        "required": ["projectId", "confirm"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "verify_gold_standard",
+      "description": "Verify seeded gold-standard rows."
+    },
+    {
+      "name": "get_mcp_instructions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}
