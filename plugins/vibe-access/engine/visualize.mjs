@@ -700,3 +700,739 @@ export function normalize(json, opts = {}) {
   surface.lede = buildLede(surface);
   return surface;
 }
+
+// ================================================================ the renderer (§5, §6, §9)
+// ONE self-contained HTML document: inline CSS, inline JS, inline SVG-free glyphs, zero
+// network. Bare mode is the reference sheet — tools, calls, explanations. The --grade layer
+// (§7) rides on top of this and never replaces it.
+
+const PLUGIN_VERSION = '0.2.0';
+
+// Text nodes: &, <, > are the only characters that can escape a text context.
+const esc = (s) =>
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Attribute values additionally escape both quote characters.
+const escAttr = (s) => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+// §6.2 — <wbr> at token-internal boundaries. `overflow-wrap: anywhere` alone breaks
+// mid-token; SubscribeMutexStateChanged must wrap where a reader expects it to.
+const wbr = (s) =>
+  esc(s)
+    .replace(/([a-z0-9])([A-Z])/g, '$1<wbr>$2')
+    .replace(/([/._-])/g, '$1<wbr>');
+
+const slug = (s) => String(s ?? '').replace(/[^a-zA-Z0-9._-]/g, '-');
+
+// §6.2 block 4 — a `*` segment is not a glob and never renders as one.
+const routeLine = (path) =>
+  String(path ?? '')
+    .split('/')
+    .map((seg) => (seg === '*' ? '<span class="qmark">{?}</span>' : wbr(seg)))
+    .join('/<wbr>');
+
+const SENTENCE_SPLIT = /(?<=[.!?])\s+/;
+const NEG_CUE = /\b(do not|don't|never|only (use|call|when)|not for|avoid|outside|casually|unreachable|404s)\b/i;
+const CTX_CUE = /\b(for|so that|when|during|while|used? (to|for|when|by))\b/i;
+const PRIVILEGE_RE = /\b(admin|role|permission|approve|reject|invite)\b/i;
+
+const sentencesOf = (text) =>
+  String(text ?? '').split(SENTENCE_SPLIT).map((s) => s.trim()).filter(Boolean);
+
+const provenanceWord = (p) =>
+  p === 'declared' ? 'declared' : p === 'unclaimed' ? 'unclaimed' : 'derived';
+
+const derivedWhy = (p) => (p && typeof p === 'object' && p.derived ? p.derived : null);
+
+// ---------------------------------------------------------------- the call blocks (§6.2.8)
+
+const tokenPlaceholder = (t, adapter) => {
+  if (t.consent.mode === 'token') {
+    return adapter === 'firebase-functions' ? '<FIREBASE_ID_TOKEN>' : '<TOKEN>';
+  }
+  return '<SESSION_TOKEN>';
+};
+
+function bodyPlaceholders(schema) {
+  const props = schema && typeof schema === 'object' ? schema.properties : null;
+  if (!props || Object.keys(props).length === 0) return null;
+  const body = {};
+  for (const [name, def] of Object.entries(props)) {
+    const type = def?.type ?? 'unknown';
+    body[name] =
+      type === 'number' || type === 'integer'
+        ? 0
+        : type === 'boolean'
+          ? false
+          : type === 'array'
+            ? []
+            : type === 'object'
+              ? {}
+              : `<${name}>`;
+  }
+  return body;
+}
+
+function nativeCall(t, surface) {
+  const real = t.transport.real;
+  if (real === 'grpc-npipe') {
+    // Never a fake URL: a named pipe is not an endpoint you can curl.
+    const lines = [
+      `pipe      ${t.transport.baseUrl}`,
+      `method    ${t.transport.path}`,
+      `metadata  x-plugin-id: <PLUGIN_ID>`,
+    ];
+    if (t.prereqs.length > 0) {
+      lines.push(`prereq    ${t.prereqs.join(', ')} must be the first rpc on this connection`);
+    }
+    if (t.consent.capability) lines.push(`consent   capability ${t.consent.capability}`);
+    lines.push('', 'gRPC over a Windows named pipe. Drive it with a gRPC client, not an HTTP one.');
+    return lines.join('\n');
+  }
+  if (real === 'http') {
+    let n = 0;
+    const filled = String(t.transport.path ?? '')
+      .split('/')
+      .map((seg) => (seg === '*' ? `<UNNAMED_PARAM_${(n += 1)}>` : seg))
+      .join('/');
+    const url = `${t.transport.baseUrl ?? ''}${filled}`;
+    const lines = [`curl -X ${t.transport.method ?? 'GET'} '${url}'`];
+    if (t.consent.mode && t.consent.mode !== 'none') {
+      lines[0] += ' \\';
+      lines.push(`  -H 'Authorization: Bearer ${tokenPlaceholder(t, surface.adapter)}'`);
+    }
+    const body = bodyPlaceholders(t.inputSchema);
+    if (body) {
+      lines[lines.length - 1] += ' \\';
+      lines.push(`  -H 'Content-Type: application/json' \\`);
+      lines.push(`  -d '${JSON.stringify(body)}'`);
+    }
+    if (n > 0) {
+      lines.push('', `${n} unnamed path parameter${n === 1 ? '' : 's'} — a caller cannot know what goes here.`);
+    }
+    return lines.join('\n');
+  }
+  return [
+    'transport: unknown — a tools/list payload carries no transport field.',
+    'Call it through your MCP client; the projection below is the wire shape.',
+  ].join('\n');
+}
+
+function mcpProjection(t) {
+  const body = bodyPlaceholders(t.inputSchema);
+  const args = body
+    ? JSON.stringify(body, null, 6).replace(/\n/g, '\n    ')
+    : '{} /* unknown — no input schema declared or minable */';
+  return [
+    '{',
+    '  "jsonrpc": "2.0",',
+    '  "id": 1,',
+    '  "method": "tools/call",',
+    '  "params": {',
+    `    "name": "${t.name}",`,
+    `    "arguments": ${args}`,
+    '  }',
+    '}',
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------- blocks
+
+const notStated = '<p class="slug">Not stated.</p>';
+
+function purposeBlock(t, opts) {
+  if (!t.purpose) {
+    return `<span class="chip">UNDOCUMENTED</span><p class="slug">No authored description — this is the scan template. Run /vibe-access:describe to author one.</p>`;
+  }
+  if (t.purposeTemplated) {
+    const body = opts.terse
+      ? ''
+      : `<p class="tmpl">${esc(t.purpose)}</p>`;
+    return `<span class="chip">UNDOCUMENTED</span><p class="slug">No authored description — this is the scan template. Run /vibe-access:describe to author one.</p>${body}`;
+  }
+  const from = t.purposeSource === 'overrides' ? '<span class="tag">from overrides</span>' : '';
+  return `${from}<p>${esc(t.purpose)}</p>`;
+}
+
+function whenBlock(t, negative) {
+  if (t.purposeTemplated || !t.purpose) return notStated;
+  const hits = sentencesOf(t.purpose).filter((s) => (negative ? NEG_CUE.test(s) : CTX_CUE.test(s) && !NEG_CUE.test(s)));
+  if (hits.length === 0) return notStated;
+  return `<p>${hits.map((s) => esc(s)).join(' ')}</p>`;
+}
+
+function schemaTable(schema, mined) {
+  const props = schema?.properties ?? null;
+  if (!props || Object.keys(props).length === 0) return null;
+  const required = new Set(Array.isArray(schema.required) ? schema.required : []);
+  const rows = Object.entries(props)
+    .map(([name, def]) => {
+      const type = def?.enum ? `enum(${def.enum.map((v) => esc(v)).join(' | ')})` : esc(def?.type ?? 'unknown');
+      const req = required.has(name) ? 'required' : 'optional';
+      const dflt = def?.default === undefined ? '—' : esc(JSON.stringify(def.default));
+      return `<tr><td><code>${wbr(name)}</code></td><td>${type}</td><td>${req}</td><td>${dflt}</td><td>${esc(def?.description ?? '')}</td></tr>`;
+    })
+    .join('');
+  const tag = mined ? '<span class="tag">mined from source</span>' : '';
+  return `${tag}<table class="params"><thead><tr><th>name</th><th>type</th><th>required</th><th>default</th><th>description</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function inputBlock(t) {
+  const table = schemaTable(t.inputSchema, false);
+  if (table) return table;
+  if (t.transport.pathParams.length > 0) {
+    const rows = t.transport.pathParams
+      .map(
+        (p) =>
+          `<tr><td><code>{?}</code></td><td>unknown</td><td>required</td><td>—</td><td>unnamed path parameter (position ${p.position}) — a caller cannot know what goes here.</td></tr>`
+      )
+      .join('');
+    return `<table class="params"><thead><tr><th>name</th><th>type</th><th>required</th><th>default</th><th>description</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  return '<p class="quiet">No input schema declared.</p>';
+}
+
+function outputBlock(t) {
+  const table = schemaTable(t.outputSchema, false);
+  if (table) return table;
+  const returns = sentencesOf(t.purpose).find((s) => /\breturns?\b/i.test(s));
+  if (returns && !t.purposeTemplated) {
+    return `<p>${esc(returns)} <span class="tag dotted" title="derived from the description prose; no schema field carries it">derived</span></p>`;
+  }
+  return '<p class="quiet">No output schema declared.</p>';
+}
+
+function annotationCell(label, a) {
+  const word = provenanceWord(a.provenance);
+  const why = derivedWhy(a.provenance);
+  const value = a.value === null ? '—' : String(a.value);
+  const text =
+    word === 'declared'
+      ? `declared: ${value}`
+      : word === 'derived'
+        ? `derived: ${value}`
+        : 'unclaimed';
+  const why2 = why ? `<span class="why">${esc(why)}</span>` : '';
+  return `<div class="ann ${word}"><span class="ann-k">${label}</span><span class="ann-v">${text}</span>${why2}</div>`;
+}
+
+function annotationsBlock(t) {
+  const a = t.annotations;
+  return `<div class="anns">${annotationCell('readOnly', a.readOnly)}${annotationCell('destructive', a.destructive)}${annotationCell('idempotent', a.idempotent)}${annotationCell('openWorld', a.openWorld)}</div>`;
+}
+
+function consentBlock(t) {
+  const mode = t.consent.mode ?? 'not declared';
+  const cap = t.consent.capability
+    ? ` <code class="cap">${wbr(t.consent.capability)}</code>`
+    : '';
+  const detail = t.consent.detail ? `<p>${esc(t.consent.detail)}</p>` : '';
+  if (!t.consent.mechanismStated) {
+    return `<p><b>auth: ${esc(mode)}</b></p><p class="slug">auth: ${esc(mode)} — mechanism not stated in the surface. "Capability not stated" is not "no capability required."</p>`;
+  }
+  const words =
+    mode === 'none'
+      ? 'Open — any caller reaches this, authenticated or not.'
+      : mode === 'session'
+        ? 'Session — handshake first, then the per-call identity header, then per-capability consent.'
+        : mode === 'token'
+          ? 'Token — a bearer credential on every call.'
+          : 'Consent mode is not declared on this surface.';
+  return `<p><b>auth: ${esc(mode)}</b>${cap}</p><p>${esc(words)}</p>${detail}`;
+}
+
+function callBlock(t, surface) {
+  return [
+    '<div class="call">',
+    '<div class="call-h">Native<button class="copy no-print" type="button">copy</button></div>',
+    `<pre class="code">${esc(nativeCall(t, surface))}</pre>`,
+    '<div class="call-h">MCP projection<button class="copy no-print" type="button">copy</button></div>',
+    `<pre class="code">${esc(mcpProjection(t))}</pre>`,
+    '<p class="quiet">Projection — not a running server.</p>',
+    '</div>',
+  ].join('');
+}
+
+// ---------------------------------------------------------------- chips + card
+
+function chipsOf(t) {
+  const chips = [];
+  const shouts = /\bDESTRUCTIVE\b/i.test(t.purpose);
+  if (t.destructive.value === true) {
+    const filled = t.destructive.provenance === 'declared' || shouts;
+    const why = derivedWhy(t.destructive.provenance);
+    chips.push(
+      `<span class="chip ${filled ? 'filled' : 'dotted'}"${why ? ` title="${escAttr(why)}"` : ''}>⚠ DESTRUCTIVE</span>`
+    );
+  }
+  if (t.consent.mode === 'none') chips.push('<span class="chip">○ OPEN</span>');
+  if (PRIVILEGE_RE.test(`${t.name} ${t.transport.path ?? ''}`)) chips.push('<span class="chip">◆ PRIVILEGE</span>');
+  if (t.tier === 'dev') chips.push('<span class="chip">◇ DEV-ONLY</span>');
+  if (t.streaming.value) chips.push('<span class="chip dotted">≋ STREAMING</span>');
+  if (t.verification.class === 'error') chips.push('<span class="chip risk">✕ FAILED</span>');
+  if (t.verification.class === 'open') chips.push('<span class="chip risk">✕ GATE OPEN</span>');
+  return chips.join('');
+}
+
+const CLASS_WORD = {
+  ran: 'RAN',
+  'gate-held': 'GATE-HELD',
+  'handle-gate-held': 'HANDLE-GATE-HELD',
+  open: 'OPEN',
+  error: 'ERROR',
+  unverified: 'UNVERIFIED',
+};
+
+function cardFooter(t, surface, opts) {
+  const bits = [];
+  if (!opts.noSource && t.provenance.sourceRef) {
+    bits.push(`<code>${wbr(String(t.provenance.sourceRef).replace(/\\/g, '/'))}</code>`);
+  }
+  if (t.provenance.origin) bits.push(esc(t.provenance.origin));
+  const cls = CLASS_WORD[t.verification.class];
+  const detail = t.verification.detail ? ` — ${esc(t.verification.detail)}` : '';
+  bits.push(`<b class="vclass v-${t.verification.class}">${cls}</b>${detail}`);
+  const micro = [surface.app, opts.noSource ? null : t.provenance.sourceRef, surface.verifyRun?.runId ? `run ${surface.verifyRun.runId}` : null]
+    .filter(Boolean)
+    .map((s) => esc(String(s).replace(/\\/g, '/')))
+    .join(' · ');
+  return `<footer class="card-f">${bits.join(' · ')}<span class="micro">${micro}</span></footer>`;
+}
+
+const BLOCK_LABELS = [
+  ['purpose', 'PURPOSE'],
+  ['when-to-use', 'WHEN TO USE'],
+  ['when-not-to-use', 'WHEN NOT TO USE'],
+  ['input', 'INPUT'],
+  ['output', 'OUTPUT'],
+  ['annotations', 'ANNOTATIONS'],
+  ['consent', 'CONSENT'],
+  ['call', 'THE CALL'],
+];
+
+function renderCard(t, surface, opts) {
+  const bodies = {
+    purpose: purposeBlock(t, opts),
+    'when-to-use': whenBlock(t, false),
+    'when-not-to-use': whenBlock(t, true),
+    input: inputBlock(t),
+    output: outputBlock(t),
+    annotations: annotationsBlock(t),
+    consent: consentBlock(t),
+    call: callBlock(t, surface),
+  };
+  const blocks = BLOCK_LABELS.map(
+    ([key, label]) =>
+      `<section class="block" data-block="${key}"><h4>${label}</h4>${bodies[key]}</section>`
+  ).join('');
+  const route =
+    t.transport.method && t.transport.path
+      ? `<div class="route"><span class="verb">${esc(t.transport.method)}</span> <code>${routeLine(t.transport.path)}</code></div>`
+      : '';
+  const prereq =
+    t.prereqs.length > 0
+      ? `<div class="prereq">requires <a href="#tool-${escAttr(slug(t.prereqs[0]))}">${esc(t.prereqs[0])}</a> first</div>`
+      : '';
+  return [
+    `<article class="card" id="tool-${escAttr(slug(t.name))}" data-kind="${escAttr(t.kind ?? '')}" data-auth="${escAttr(t.consent.mode ?? '')}" data-vclass="${escAttr(t.verification.class)}">`,
+    `<header class="card-h"><code class="tname">${wbr(t.name)}</code><span class="rail">${chipsOf(t)}</span></header>`,
+    route,
+    prereq,
+    blocks,
+    cardFooter(t, surface, opts),
+    '</article>',
+  ].join('');
+}
+
+// ---------------------------------------------------------------- bands
+
+function masthead(surface, opts) {
+  const corrected = surface.tools.some((t) => t.transport.corrected);
+  const real = surface.tools[0]?.transport.real ?? 'unknown';
+  const banner = corrected
+    ? `<p class="banner">Real transport is <b>${esc(real)}</b>. You cannot curl this. The <code>type: "http"</code> in the manifest is a schema artifact — see HOW TO READ THIS.</p>`
+    : surface.source === 'mcp'
+      ? '<p class="banner quiet">transport: unknown — a tools/list payload carries no transport field.</p>'
+      : '';
+  const gen = surface.generatedAt
+    ? `manifest ${esc(surface.generatedAt)} (${ageInDays(surface.generatedAt, surface.renderedAt)}d)`
+    : 'manifest date not stated';
+  const run = surface.verifyRun
+    ? `verify run ${esc(surface.verifyRun.runId ?? '?')} (${surface.verifyRun.ageAtRender}d)`
+    : 'no verify run stamped';
+  const stale =
+    surface.verifyRun && surface.generatedAt && Date.parse(surface.verifyRun.at) < Date.parse(surface.generatedAt)
+      ? '<p class="banner risk">The verify run predates the manifest — these proofs are older than the surface they claim to prove.</p>'
+      : '';
+  return [
+    '<header class="band" data-band="masthead">',
+    `<h1>${esc(surface.app ?? 'agent surface')}</h1>`,
+    `<p class="sub">${esc(surface.adapter ?? 'unknown adapter')} · ${esc(surface.source)} · ${esc(real)}</p>`,
+    banner,
+    stale,
+    `<p class="freshness">${gen} · ${run} · rendered ${esc(surface.renderedAt)}</p>`,
+    '<div class="controls no-print">',
+    '<button type="button" id="theme">screen / ink preview</button>',
+    '<button type="button" id="pdf">Save as PDF</button>',
+    '<button type="button" id="md">Copy as Markdown</button>',
+    '</div>',
+    '</header>',
+  ].join('');
+}
+
+const ledeBand = (surface) =>
+  `<section class="band lede" data-band="lede"><p>${esc(surface.lede)}</p></section>`;
+
+function indexBand(surface) {
+  const rows = surface.tools
+    .map((t) => {
+      const doc = t.purposeTemplated || !t.purpose ? '<span class="mini">UNDOCUMENTED</span>' : '';
+      return [
+        `<a class="row" href="#tool-${escAttr(slug(t.name))}">`,
+        `<code>${wbr(t.name)}</code>`,
+        `<span class="mini">${esc(t.kind ?? '—')}</span>`,
+        `<span class="mini">${esc(t.consent.mode ?? '—')}</span>`,
+        doc,
+        `<span class="mini v-${t.verification.class}">${esc(t.verification.class)}</span>`,
+        '</a>',
+      ].join('');
+    })
+    .join('');
+  return [
+    '<section class="band" data-band="index">',
+    '<h2>TOOL INDEX</h2>',
+    '<div class="filters no-print">',
+    '<input type="search" id="q" placeholder="filter (press /)">',
+    '<button type="button" class="f" data-filter="open">Open</button>',
+    '<button type="button" class="f" data-filter="destructive">Destructive</button>',
+    '<button type="button" class="f" data-filter="failed">Failed</button>',
+    '<button type="button" class="f" data-filter="undocumented">Undocumented</button>',
+    '<button type="button" id="density">density: cards / rows</button>',
+    '</div>',
+    '<p class="print-filter">FILTERED VIEW</p>',
+    `<nav class="index">${rows}</nav>`,
+    '</section>',
+  ].join('');
+}
+
+function prereqBand(surface) {
+  const gated = surface.tools.filter((t) => t.prereqs.length > 0);
+  if (gated.length === 0) return '';
+  const first = gated[0].prereqs[0];
+  return [
+    '<section class="band" data-band="prereqs">',
+    '<h2>PREREQUISITE CHAIN</h2>',
+    '<ol>',
+    `<li><code>${wbr(first)}</code> must be the first call on the connection.</li>`,
+    '<li>Every gated call afterwards carries the session identity header (<code>x-plugin-id</code>).</li>',
+    `<li>${gated.length} of ${surface.tools.length} affordances depend on it. A call made without it does not fail loudly — it is simply refused.</li>`,
+    '</ol>',
+    '</section>',
+  ].join('');
+}
+
+function cardsBand(surface, opts) {
+  const groups = new Map();
+  for (const t of surface.tools) {
+    if (!groups.has(t.group)) groups.set(t.group, []);
+    groups.get(t.group).push(t);
+  }
+  const sections = [...groups.entries()]
+    .map(([name, tools]) => {
+      const prefix = tools[0].transport.sharedPrefix;
+      const factored = prefix ? ` · shared prefix <code>${wbr(prefix)}</code> factored out of every card below` : '';
+      const auths = [...new Set(tools.map((t) => t.consent.mode ?? 'none'))].join(', ');
+      const verify = verifyDecompositionSentence(
+        tools.reduce(
+          (acc, t) => {
+            const map = {
+              ran: 'ran',
+              'gate-held': 'gateHeld',
+              'handle-gate-held': 'handleGateHeld',
+              open: 'open',
+              error: 'error',
+              unverified: 'unverified',
+            };
+            acc[map[t.verification.class]] += 1;
+            return acc;
+          },
+          { ran: 0, gateHeld: 0, handleGateHeld: 0, open: 0, error: 0, unverified: 0 }
+        )
+      );
+      return [
+        `<div class="group-band"><h3>${esc(name)}</h3>`,
+        `<p class="quiet">${tools.length} affordance${tools.length === 1 ? '' : 's'} · auth: ${esc(auths)}${factored}</p>`,
+        `<p class="quiet">${esc(verify)}</p></div>`,
+        tools.map((t) => renderCard(t, surface, opts)).join(''),
+      ].join('');
+    })
+    .join('');
+  return `<section class="band" data-band="cards"><h2>TOOLS</h2>${sections}</section>`;
+}
+
+function howToReadBand(surface) {
+  const groupNote = `Grouping: the section bands are the app's own shape, derived from the surface — not an axis anyone typed.`;
+  return [
+    '<section class="band" data-band="how-to-read">',
+    '<h2>HOW TO READ THIS</h2>',
+    '<dl>',
+    '<dt>"Pass" means two different things.</dt>',
+    '<dd>GATE-HELD and HANDLE-GATE-HELD mean the gate worked and the call never ran. RAN means data came back. A bare pass count folds those together, so this page never prints one: the verify math is always the full decomposition — ran / gate-held / handle-gate-held / open / error / unverified. <b>Tool count is not graded.</b> 17 is not a better number than 85.</dd>',
+    '<dt>tier: prod-safe is an ASSERTION, not a safety proof.</dt>',
+    '<dd>Nothing verified it. It is what the manifest claims, printed as a claim.</dd>',
+    '<dt>{?} is an unnamed path parameter.</dt>',
+    '<dd>The route takes a value there and nothing in the surface says what it is. The call block renders it as <code>&lt;UNNAMED_PARAM_1&gt;</code> so a genuine gap is impossible to paste past.</dd>',
+    '<dt>declared / derived / mined / unclaimed.</dt>',
+    '<dd><b>declared</b> — a real field in the data says so. <b>derived</b> — inferred, with the reason printed. <b>mined</b> — pulled out of prose. <b>unclaimed</b> — nothing says either way, which is not the same as "false."</dd>',
+    '<dt>Transport correction.</dt>',
+    '<dd>The manifest schema has one transport member ("http"). When the real transport is something else, the masthead says so and the call block renders the real thing.</dd>',
+    '<dt>The MCP projection is a projection.</dt>',
+    '<dd>The <code>tools/call</code> envelopes on these cards are a projection, not a running server — vibe-access does not emit an MCP server today.</dd>',
+    `<dt>Grouping.</dt><dd>${esc(groupNote)}</dd>`,
+    '</dl>',
+    '</section>',
+  ].join('');
+}
+
+function provenanceBand(surface, opts, bytes) {
+  const src = opts.noSource ? 'source refs suppressed (--no-source)' : `${surface.tools.length} affordances`;
+  const run = surface.verifyRun ? `run ${esc(surface.verifyRun.runId ?? '?')}` : 'no verify run';
+  return [
+    '<footer class="band" data-band="provenance">',
+    `<p class="quiet">${esc(surface.app ?? 'agent surface')} · ${esc(src)} · ${bytes} bytes of surface data · ${run} · generated ${esc(surface.generatedAt ?? 'unstated')} · rendered ${esc(surface.renderedAt)} · vibe-access ${PLUGIN_VERSION}</p>`,
+    '</footer>',
+  ].join('');
+}
+
+// ---------------------------------------------------------------- CSS + JS
+
+// Fonts: the 626 faces (Space Grotesk, JetBrains Mono) are NOT available offline and are not
+// embedded — a self-contained file that survives email cannot carry megabytes of woff2.
+// local() resolution picks the brand faces up where installed; everywhere else the named
+// system stack renders correctly.
+const CSS = `
+:root{
+  --font-ui:'Space Grotesk','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
+  --navy:#0b1526; --navy-2:#101e33; --line:#1d3050;
+  --ink:#e9eff8; --ink-2:#a9b8ce; --ink-3:#71849f;
+  --cyan:#17d4fa; --magenta:#f22f89;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--navy);color:var(--ink);font-family:var(--font-ui);line-height:1.55;overflow-wrap: anywhere}
+main{max-width:900px;margin:0 auto;padding:24px 16px 96px}
+h1{font-size:1.7rem;margin:0 0 4px}
+h2{font-size:.85rem;letter-spacing:.14em;color:var(--cyan);border-bottom:1px solid var(--line);padding-bottom:6px;margin:40px 0 16px}
+h3{font-size:1rem;margin:24px 0 2px}
+h4{font-size:.68rem;letter-spacing:.12em;color:var(--ink-3);margin:0 0 4px}
+code,pre{font-family:var(--font-mono);overflow-wrap: anywhere}
+.sub,.freshness,.quiet,.mini{color:var(--ink-2)}
+.freshness,.quiet{font-size:.8rem}
+.band{margin-bottom:8px}
+.lede p{font-size:1.05rem;border-left:2px solid var(--cyan);padding-left:14px;margin:24px 0}
+.banner{border:1px solid var(--cyan);border-left-width:4px;padding:10px 12px;border-radius:3px}
+.banner.risk{border-color:var(--magenta)}
+.controls,.filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button{font-family:var(--font-ui);font-size:.75rem;background:transparent;color:var(--ink-2);border:1px solid var(--line);border-radius:3px;padding:5px 10px;cursor:pointer}
+button:hover{color:var(--cyan);border-color:var(--cyan)}
+button.on{color:var(--navy);background:var(--cyan);border-color:var(--cyan)}
+input[type=search]{font-family:var(--font-mono);font-size:.75rem;background:var(--navy-2);color:var(--ink);border:1px solid var(--line);border-radius:3px;padding:5px 10px;flex:1 1 220px}
+.index{display:flex;flex-direction:column}
+.row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:4px 6px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.row:hover{background:var(--navy-2)}
+.row code{font-size:.82rem}
+.mini{font-size:.68rem;letter-spacing:.06em}
+.group-band{margin-top:32px;border-top:1px solid var(--line);padding-top:12px}
+.card{border:1px solid var(--line);border-radius:4px;padding:14px 16px;margin:14px 0;background:var(--navy-2);break-inside:avoid}
+.card-h{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.tname{font-size:1rem;font-weight:600;color:var(--ink)}
+.rail{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:.62rem;letter-spacing:.1em;border:1px solid var(--ink-3);color:var(--ink-2);border-radius:2px;padding:2px 6px}
+.chip.filled{background:var(--magenta);border-color:var(--magenta);color:#fff;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.chip.risk{border-color:var(--magenta);color:var(--magenta)}
+.chip.dotted{border-style:dashed}
+.route{margin:8px 0;font-size:.82rem;color:var(--ink-2)}
+.verb{color:var(--cyan);font-family:var(--font-mono)}
+.qmark{color:var(--magenta);font-family:var(--font-mono)}
+.prereq{font-size:.75rem;color:var(--ink-2)}
+.prereq a{color:var(--cyan)}
+.block{margin-top:12px}
+.block p{margin:0 0 6px}
+.slug{color:var(--magenta);font-size:.82rem}
+.tmpl{color:var(--ink-3);font-style:italic}
+.tag{font-size:.62rem;letter-spacing:.08em;color:var(--ink-3);border:1px solid var(--line);border-radius:2px;padding:1px 5px;margin-right:6px}
+.tag.dotted{border-style:dashed}
+.params{width:100%;border-collapse:collapse;font-size:.78rem;break-inside:avoid}
+.params th{text-align:left;color:var(--ink-3);font-weight:400;border-bottom:1px solid var(--line);padding:3px 6px 3px 0}
+.params td{border-bottom:1px solid var(--line);padding:3px 6px 3px 0;vertical-align:top}
+.anns{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}
+.ann{border:1px solid var(--line);border-radius:2px;padding:6px 8px;font-size:.72rem}
+.ann-k{display:block;color:var(--ink-3);letter-spacing:.08em}
+.ann.derived{border-style:dashed;color:var(--ink-2)}
+.ann.unclaimed{border-style:dashed;color:var(--ink-3);background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(113,132,159,.12) 5px,rgba(113,132,159,.12) 6px)}
+.why{display:block;color:var(--ink-3);font-size:.66rem;margin-top:2px}
+.cap{color:var(--cyan)}
+.call-h{display:flex;justify-content:space-between;align-items:center;font-size:.68rem;letter-spacing:.1em;color:var(--ink-3);margin-top:8px}
+pre.code{background:#08111f;border:1px solid var(--line);border-radius:3px;padding:10px;font-size:.76rem;overflow-x: auto;white-space:pre-wrap;overflow-wrap: anywhere;margin:4px 0}
+.card-f{margin-top:12px;padding-top:8px;border-top:1px solid var(--line);font-size:.72rem;color:var(--ink-2)}
+.vclass{letter-spacing:.08em}
+.v-open,.v-error{color:var(--magenta)}
+.v-ran,.v-gate-held,.v-handle-gate-held{color:var(--cyan)}
+.micro{display:block;font-size:8px;color:var(--ink-3);font-family:var(--font-mono);margin-top:6px}
+dl dt{color:var(--cyan);margin-top:12px;font-size:.9rem}
+dl dd{margin:2px 0 0;color:var(--ink-2);font-size:.88rem}
+.print-filter{display:none}
+[data-density=rows] .card .block,[data-density=rows] .card .route,[data-density=rows] .card .card-f,[data-density=rows] .card .prereq{display:none}
+[data-density=rows] .card.open .block,[data-density=rows] .card.open .route,[data-density=rows] .card.open .card-f{display:block}
+.hidden{display:none}
+@media print{
+  :root{color-scheme: light}
+  body{background:#FBFAF7;color:#111}
+  main{max-width:none;padding:0}
+  .no-print{display:none!important}
+  h2{color:#0F6B6B;border-color:#ddd8d0}
+  .sub,.freshness,.quiet,.mini,.tmpl,.ann-k,.why,.micro{color:#6B6660}
+  .lede p{border-left-color:#0F6B6B}
+  .card{background:#fff;border-color:#ddd8d0}
+  pre.code{background:#F3F1EC;border-color:#ddd8d0;white-space:pre-wrap;overflow-wrap: anywhere}
+  .chip{border-color:#6B6660;color:#111}
+  .chip.filled{background:#7A1F2B;color:#fff;border-color:#7A1F2B;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  .chip.risk,.slug,.v-open,.v-error,.qmark{color:#7A1F2B}
+  .verb,.cap,.prereq a,dl dt{color:#0F6B6B}
+  .card,.params,.group-band{break-inside:avoid}
+  h3{break-after:avoid}
+  [data-band=index]{break-before:page}
+  .card .block{display:block!important}
+  details>*{display:block!important}
+  body.filtered .print-filter{display:block;border:1px solid #7A1F2B;color:#7A1F2B;padding:6px 8px}
+  a[href^="http"]::after{content:" (" attr(href) ")"}
+}
+@page{size:letter portrait;margin:14mm 12mm}
+`;
+
+const JS = `
+(function(){
+  var root=document.documentElement;
+  var b=document.getElementById('theme');
+  if(b)b.addEventListener('click',function(){root.dataset.ink=root.dataset.ink?'':'1';document.body.classList.toggle('ink');});
+  var p=document.getElementById('pdf');
+  if(p)p.addEventListener('click',function(){window.print();});
+  var cards=Array.prototype.slice.call(document.querySelectorAll('.card'));
+  var rows=Array.prototype.slice.call(document.querySelectorAll('.index .row'));
+  var q=document.getElementById('q');
+  var active={};
+  function match(c){
+    var t=c.textContent.toLowerCase();
+    var term=q&&q.value?q.value.toLowerCase():'';
+    if(term&&t.indexOf(term)<0)return false;
+    if(active.open&&c.dataset.auth!=='none')return false;
+    if(active.destructive&&c.innerHTML.indexOf('DESTRUCTIVE')<0)return false;
+    if(active.failed&&c.dataset.vclass!=='error'&&c.dataset.vclass!=='open')return false;
+    if(active.undocumented&&c.innerHTML.indexOf('UNDOCUMENTED')<0)return false;
+    return true;
+  }
+  function apply(){
+    var shown=0;
+    cards.forEach(function(c,i){
+      var ok=match(c);
+      c.classList.toggle('hidden',!ok);
+      if(rows[i])rows[i].classList.toggle('hidden',!ok);
+      if(ok)shown++;
+    });
+    var on=Object.keys(active).filter(function(k){return active[k];});
+    var filtered=on.length>0||(q&&q.value);
+    document.body.classList.toggle('filtered',!!filtered);
+    var pf=document.querySelector('.print-filter');
+    if(pf)pf.textContent='FILTERED VIEW — showing '+shown+' of '+cards.length+'. Filters: '+(on.join(', ')||'text');
+    location.hash=on.length?('#f='+on.join(',')):'';
+  }
+  if(q)q.addEventListener('input',apply);
+  document.addEventListener('keydown',function(e){if(e.key==='/'&&document.activeElement!==q&&q){e.preventDefault();q.focus();}});
+  Array.prototype.forEach.call(document.querySelectorAll('.f'),function(btn){
+    btn.addEventListener('click',function(){
+      var k=btn.dataset.filter;active[k]=!active[k];btn.classList.toggle('on',!!active[k]);apply();
+    });
+  });
+  var d=document.getElementById('density');
+  if(d)d.addEventListener('click',function(){
+    root.dataset.density=root.dataset.density==='rows'?'':'rows';
+  });
+  if(cards.length>40)root.dataset.density='rows';
+  cards.forEach(function(c){c.querySelector('.card-h').addEventListener('click',function(){c.classList.toggle('open');});});
+  Array.prototype.forEach.call(document.querySelectorAll('.copy'),function(btn){
+    btn.addEventListener('click',function(){
+      var pre=btn.closest('.call-h').nextElementSibling;
+      if(navigator.clipboard)navigator.clipboard.writeText(pre.textContent);
+    });
+  });
+  var md=document.getElementById('md');
+  if(md)md.addEventListener('click',function(){
+    var data=JSON.parse(document.getElementById('surface').textContent);
+    var out=data.tools.map(function(t){
+      return '- **'+t.name+'** ('+(t.kind||'?')+', auth: '+(t.consent.mode||'?')+') — '+(t.purpose||'no description');
+    }).join('\\n');
+    if(navigator.clipboard)navigator.clipboard.writeText(out);
+  });
+  var hash=location.hash.match(/#f=(.*)/);
+  if(hash){hash[1].split(',').forEach(function(k){
+    var btn=document.querySelector('.f[data-filter="'+k+'"]');
+    if(btn){active[k]=true;btn.classList.add('on');}
+  });apply();}
+  window.addEventListener('beforeprint',function(){
+    Array.prototype.forEach.call(document.querySelectorAll('details'),function(x){x.open=true;});
+  });
+  if(window.matchMedia){var m=window.matchMedia('print');if(m.addListener)m.addListener(function(x){
+    if(x.matches)Array.prototype.forEach.call(document.querySelectorAll('details'),function(y){y.open=true;});
+  });}
+})();
+`;
+
+// The embedded JSON island: a self-describing artifact. Escape the sequences that can break
+// out of a script element or out of a JS source text (§4.3.8).
+const LINE_SEP = String.fromCharCode(0x2028);
+const PARA_SEP = String.fromCharCode(0x2029);
+
+const jsonIsland = (surface) =>
+  JSON.stringify(surface)
+    .replace(/</g, '\\u003c')
+    .split(LINE_SEP)
+    .join('\\u2028')
+    .split(PARA_SEP)
+    .join('\\u2029');
+
+/**
+ * render(surfaceView, opts) -> one self-contained HTML document.
+ * opts: { terse?: boolean, noSource?: boolean }
+ * Pure and deterministic — every clock value arrives inside surfaceView (D24).
+ */
+export function render(surfaceView, opts = {}) {
+  const o = { terse: opts.terse === true, noSource: opts.noSource === true };
+  const island = jsonIsland(surfaceView);
+  const title = `${surfaceView.app ?? 'agent surface'} — agent access`;
+  return [
+    '<!doctype html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    `<title>${esc(title)}</title>`,
+    `<style>${CSS}</style>`,
+    '</head>',
+    '<body>',
+    '<main>',
+    masthead(surfaceView, o),
+    ledeBand(surfaceView),
+    indexBand(surfaceView),
+    prereqBand(surfaceView),
+    cardsBand(surfaceView, o),
+    howToReadBand(surfaceView),
+    provenanceBand(surfaceView, o, island.length),
+    '</main>',
+    `<script type="application/json" id="surface">${island}</script>`,
+    `<script>${JS}</script>`,
+    '</body>',
+    '</html>',
+    '',
+  ].join('\n');
+}
