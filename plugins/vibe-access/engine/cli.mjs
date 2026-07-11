@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-import { resolve, join } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { detect } from './detect.mjs';
 import { scan, writeScanArtifacts } from './scan.mjs';
 import { buildManifest, writeManifest } from './map.mjs';
 import { evaluateGaps } from './gaps.mjs';
 import { runVerify, stampManifest } from './verify.mjs';
 import { renderVerifyReport } from './report.mjs';
+import { normalize, render } from './visualize.mjs';
 
 function parseArgs(argv) {
   const [cmd, ...rest] = argv;
@@ -32,6 +34,27 @@ function parseArgs(argv) {
 
 const { cmd, flags, positional } = parseArgs(process.argv.slice(2));
 const appRoot = resolve(flags.app ?? process.cwd());
+
+// §3.3 — args array, shell: false, always. A user-supplied --out path is never concatenated
+// into a shell string; the plugin family that ships vibe-sec does not open a command-injection
+// surface to launch a browser (and `shell: true` + start breaks on paths with spaces anyway).
+// Best-effort: failing to open is a warning, not an error. No-op without a TTY (CI).
+function openInBrowser(path) {
+  if (!process.stdout.isTTY) return;
+  const [bin, args] =
+    process.platform === 'win32'
+      ? ['explorer.exe', [path]]
+      : process.platform === 'darwin'
+        ? ['open', [path]]
+        : ['xdg-open', [path]];
+  try {
+    const child = spawn(bin, args, { shell: false, stdio: 'ignore', detached: true });
+    child.on('error', (err) => console.error(`warning: could not open ${path} — ${err.message}`));
+    child.unref();
+  } catch (err) {
+    console.error(`warning: could not open ${path} — ${err.message}`);
+  }
+}
 
 const COMMANDS = {
   detect() {
@@ -82,6 +105,43 @@ const COMMANDS = {
     mkdirSync(docsDir, { recursive: true });
     writeFileSync(join(docsDir, `verify-${run.startedAt.slice(0, 10)}.md`), renderVerifyReport(run, stamped));
     console.log(JSON.stringify({ runId: run.runId, results: run.results }, null, 2));
+  },
+  // §3 — visualize. Reads one JSON file, writes one HTML file. Never mutates the manifest,
+  // never touches .vibe-access/state/, never probes a URL. No MCP client lives here: for a
+  // live server the SKILL parks the tools/list payload on disk and passes --input (D3).
+  visualize() {
+    // parseArgs turns a value-less trailing flag into boolean true; `--out` writing a file
+    // named "true" is a bug, not a behavior (§3.4).
+    for (const key of ['input', 'out']) {
+      if (flags[key] === true) throw new Error(`--${key} requires a value`);
+    }
+    const inputPath = flags.input ? resolve(String(flags.input)) : join(appRoot, 'agent-access.json');
+    if (!existsSync(inputPath)) {
+      throw new Error('no input — expected agent-access.json at the app root or --input <file>');
+    }
+    let json;
+    try {
+      json = JSON.parse(readFileSync(inputPath, 'utf8'));
+    } catch (err) {
+      throw new Error(`unparseable JSON at ${inputPath} — ${err.message}`);
+    }
+    // The render clock is computed ONCE here and passed in; the renderer is pure (D24).
+    const renderedAt = new Date().toISOString();
+    const surface = normalize(json, { renderedAt, noSource: flags['no-source'] === true });
+    const html = render(surface, { terse: flags.terse === true });
+    const outPath = flags.out
+      ? resolve(String(flags.out))
+      : join(appRoot, 'docs', 'vibe-access', `agent-access-${renderedAt.slice(0, 10)}.html`);
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, html);
+    if (flags.open === true) openInBrowser(outPath);
+    console.log(
+      JSON.stringify(
+        { tools: surface.tools.length, source: surface.source, findings: surface.findings.length, out: outPath },
+        null,
+        2
+      )
+    );
   },
   stamp() {
     const [affordanceId, status] = positional;
