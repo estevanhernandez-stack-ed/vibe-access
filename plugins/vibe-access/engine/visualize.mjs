@@ -113,6 +113,13 @@ export function mineCapability(description) {
   return h ? h[0] : null;
 }
 
+// §7.1 has-description — a description under 40 chars is a label, not a purpose. An MCP
+// server that ships "Milestone CRUD." documents itself exactly as well as a scan template
+// does, and the sheet says the same word for both.
+export const MIN_DESCRIPTION_CHARS = 40;
+export const isUndocumented = (t) =>
+  !t.purpose || t.purposeTemplated || norm(t.purpose).length < MIN_DESCRIPTION_CHARS;
+
 const HANDLE_GATE_RE = /handle ownership/i;
 const DESTRUCTIVE_WORD_RE = /\b(delete|close|kill|stop|reset|wipe|drop|irreversibl)\w*\b/i;
 
@@ -481,6 +488,12 @@ function buildFindings(tools, { source, discoveryRoute, validationErrors, counts
 // always its own term, never folded into gate-held.
 export function verifyDecompositionSentence(verify) {
   const total = Object.values(verify).reduce((a, b) => a + b, 0);
+  // Nothing ran, nothing was gated, nothing errored: the surface was never probed at all
+  // (an MCP tools/list payload carries no verify data). "N probed — N unverified" would be
+  // a contradiction printed in the honesty band. Say it plainly instead.
+  if (total > 0 && verify.unverified === total) {
+    return `Not verified — no verify run on this surface (${total} tool${total === 1 ? '' : 's'}).`;
+  }
   const terms = [
     [verify.ran, 'ran'],
     [verify.gateHeld, 'gate-held'],
@@ -510,6 +523,7 @@ function buildCounts(tools) {
   const byTier = {};
   const destructive = { declared: 0, derived: 0, unclaimed: 0 };
   let templated = 0;
+  let undocumented = 0;
   let withInputSchema = 0;
   let withDeclaredInputSchema = 0;
   let withMinedInputSchema = 0;
@@ -525,6 +539,7 @@ function buildCounts(tools) {
     if (t.consent.mode) byAuth[t.consent.mode] = (byAuth[t.consent.mode] ?? 0) + 1;
     if (t.tier) byTier[t.tier] = (byTier[t.tier] ?? 0) + 1;
     if (t.purposeTemplated) templated += 1;
+    if (isUndocumented(t)) undocumented += 1;
     if (t.inputSchema) {
       withInputSchema += 1;
       if (minedFrom(t.inputSchema)) withMinedInputSchema += 1;
@@ -548,6 +563,7 @@ function buildCounts(tools) {
     byTier,
     verify,
     templated,
+    undocumented,
     withInputSchema,
     withDeclaredInputSchema,
     withMinedInputSchema,
@@ -587,17 +603,22 @@ function buildSchemaGaps(source, tools, counts, discoveryRoute) {
 }
 
 function buildLede(surface) {
-  const { counts, tools, findings } = surface;
+  const { counts, tools, findings, source } = surface;
   const files = new Set(
     tools.map((t) => t.provenance.sourceRef).filter(Boolean).map((r) => r.replace(/:\d+$/, ''))
   ).size;
   const transport = tools[0]?.transport.real ?? 'unknown';
   const spread = files > 0 ? ` across ${files} source file${files === 1 ? '' : 's'}` : '';
   const s1 = `${counts.total} ${transport} affordance${counts.total === 1 ? '' : 's'}${spread}.`;
+  // "Every affordance declares a gate" is true only where a gate COULD be declared. A
+  // tools/list payload has no auth field at all — reading its silence as a gate is the exact
+  // fail-open this plugin exists to catch, printed in the lede.
   const s2 =
     counts.openSurface > 0
       ? `${counts.openSurface} answer an unauthenticated caller.`
-      : 'Every affordance declares a gate.';
+      : source === 'mcp'
+        ? 'A tools/list payload carries no auth model — consent is not declared for any of them.'
+        : 'Every affordance declares a gate.';
   const worst = findings.find((f) => f.severity !== 'info' && f.severity !== 'validation');
   const s3 = worst ? `${worst.title}.` : 'No breach, no unclaimed destruction, no tier contradiction.';
   const s4 = verifyDecompositionSentence(counts.verify);
@@ -910,6 +931,14 @@ function purposeBlock(t, opts) {
     const body = opts.terse ? '' : `<p class="tmpl">${esc(t.purpose)}</p>`;
     return filled(`<span class="chip">UNDOCUMENTED</span>${TEMPLATE_SLUG}${body}`);
   }
+  if (isUndocumented(t)) {
+    // Thin: the prose is real, so it prints — but a 15-character label is not a purpose, and
+    // the card grades it the same as a template rather than letting length hide behind ink.
+    const n = norm(t.purpose).length;
+    return filled(
+      `<span class="chip">UNDOCUMENTED</span><p class="tmpl-note">${n} characters — a label, not a purpose. An agent cannot decide from this.</p><p>${esc(t.purpose)}</p>`
+    );
+  }
   const from = t.purposeSource === 'overrides' ? '<span class="tag">from overrides</span>' : '';
   return filled(`${from}<p>${esc(t.purpose)}</p>`);
 }
@@ -942,9 +971,10 @@ function schemaTable(schema) {
       return `<tr><td><code>${wbr(name)}</code></td><td>${type}</td><td>${req}</td><td>${dflt}</td><td>${where}</td></tr>`;
     })
     .join('');
+  // mined != declared, and the card never lets a reader guess which one they are holding.
   const tag = mined
     ? `<span class="tag dotted" title="read out of the handler source by scan — not a declared schema">mined from ${esc(mined)}</span>`
-    : '';
+    : `<span class="tag" title="the surface declares this schema as a real field — nothing here was inferred">declared by the server</span>`;
   return `${tag}<table class="params"><thead><tr><th>name</th><th>type</th><th>required</th><th>default</th><th>description</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -1190,7 +1220,7 @@ const ledeBand = (surface) =>
 function indexBand(surface) {
   const rows = surface.tools
     .map((t) => {
-      const doc = t.purposeTemplated || !t.purpose ? '<span class="mini">UNDOCUMENTED</span>' : '';
+      const doc = isUndocumented(t) ? '<span class="mini">UNDOCUMENTED</span>' : '';
       return [
         `<a class="row" href="#tool-${escAttr(slug(t.name))}">`,
         `<code>${wbr(t.name)}</code>`,
@@ -1205,11 +1235,25 @@ function indexBand(surface) {
   // D7 — the absence rate is stated ONCE, here, and the cards mark it in one muted line each.
   // The to-do sentence rides with the statement, not with 84 copies of it.
   const n = surface.tools.length;
-  const { templated, withDeclaredInputSchema, withMinedInputSchema } = surface.counts;
+  const { templated, undocumented, withDeclaredInputSchema, withMinedInputSchema } = surface.counts;
   const todo =
     templated > 0
       ? ' Run <code>/vibe-access:describe</code> to author the missing explanations.'
       : '';
+  // An MCP surface has no scan templates to count — its hole is absent or too-thin prose,
+  // and :describe does not run against a server someone else owns.
+  if (surface.source === 'mcp') {
+    return [
+      '<section class="band" data-band="index">',
+      '<h2>TOOL INDEX</h2>',
+      `<p class="quiet absence-note">${undocumented} of ${n} descriptions are absent or under ${MIN_DESCRIPTION_CHARS} characters — a label, not a purpose · ` +
+        `${withDeclaredInputSchema} of ${n} declare an input schema. Stated once here — each card marks its own hole in one line, not a wall.</p>`,
+      filterControls(surface),
+      '<p class="print-filter">FILTERED VIEW</p>',
+      `<nav class="index">${rows}</nav>`,
+      '</section>',
+    ].join('');
+  }
   // mined != declared, and the sheet's one input-coverage statement says which (§13.1.5).
   const minedClause =
     withMinedInputSchema > 0
@@ -1223,6 +1267,15 @@ function indexBand(surface) {
     '<section class="band" data-band="index">',
     '<h2>TOOL INDEX</h2>',
     note,
+    filterControls(surface),
+    '<p class="print-filter">FILTERED VIEW</p>',
+    `<nav class="index">${rows}</nav>`,
+    '</section>',
+  ].join('');
+}
+
+function filterControls(surface) {
+  return [
     '<div class="filters no-print">',
     '<input type="search" id="q" placeholder="filter (press /)">',
     '<button type="button" class="f" data-filter="open">Open</button>',
@@ -1240,9 +1293,6 @@ function indexBand(surface) {
     ),
     '<button type="button" id="density">density: cards / rows</button>',
     '</div>',
-    '<p class="print-filter">FILTERED VIEW</p>',
-    `<nav class="index">${rows}</nav>`,
-    '</section>',
   ].join('');
 }
 
