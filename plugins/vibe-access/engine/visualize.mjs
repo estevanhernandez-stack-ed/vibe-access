@@ -444,13 +444,18 @@ function buildFindings(tools, { source, discoveryRoute, validationErrors, counts
     );
   }
 
-  if (source === 'manifest' && counts.withInputSchema === 0 && counts.withOutputSchema === 0) {
+  // mined != declared (§13.1.5): a shape read out of the handler never closes the DECLARED gap.
+  if (source === 'manifest' && counts.withDeclaredInputSchema === 0 && counts.withOutputSchema === 0) {
+    const minedNote =
+      counts.withMinedInputSchema > 0
+        ? ` ${counts.withMinedInputSchema} carry an input shape mined from handler source — read out of the code, not declared by it.`
+        : '';
     out.push(
       finding(
         'schema-coverage',
         'info',
         `0 of ${total} affordances declare an input or output schema`,
-        'The manifest cannot tell you what to send or what comes back. Stated once here, not as a red slug on every card.',
+        `The manifest cannot tell you what to send or what comes back.${minedNote} Stated once here, not as a red slug on every card.`,
         []
       )
     );
@@ -506,6 +511,8 @@ function buildCounts(tools) {
   const destructive = { declared: 0, derived: 0, unclaimed: 0 };
   let templated = 0;
   let withInputSchema = 0;
+  let withDeclaredInputSchema = 0;
+  let withMinedInputSchema = 0;
   let withOutputSchema = 0;
   let withDeclaredAnnotation = 0;
   let openSurface = 0;
@@ -518,7 +525,11 @@ function buildCounts(tools) {
     if (t.consent.mode) byAuth[t.consent.mode] = (byAuth[t.consent.mode] ?? 0) + 1;
     if (t.tier) byTier[t.tier] = (byTier[t.tier] ?? 0) + 1;
     if (t.purposeTemplated) templated += 1;
-    if (t.inputSchema) withInputSchema += 1;
+    if (t.inputSchema) {
+      withInputSchema += 1;
+      if (minedFrom(t.inputSchema)) withMinedInputSchema += 1;
+      else withDeclaredInputSchema += 1;
+    }
     if (t.outputSchema) withOutputSchema += 1;
     if (Object.values(t.annotations).some((a) => a.provenance === 'declared')) withDeclaredAnnotation += 1;
     if (t.consent.mode === 'none') openSurface += 1;
@@ -538,6 +549,8 @@ function buildCounts(tools) {
     verify,
     templated,
     withInputSchema,
+    withDeclaredInputSchema,
+    withMinedInputSchema,
     withOutputSchema,
     withDeclaredAnnotation,
     openSurface,
@@ -551,8 +564,12 @@ function buildSchemaGaps(source, tools, counts, discoveryRoute) {
   if (source !== 'manifest') return [];
   const gaps = [];
   const n = tools.length;
-  if (counts.withInputSchema === 0 && counts.withOutputSchema === 0) {
-    gaps.push(`input and output are null in ${n} of ${n} affordances — the manifest cannot say what to send or what comes back.`);
+  if (counts.withDeclaredInputSchema === 0 && counts.withOutputSchema === 0) {
+    gaps.push(
+      counts.withMinedInputSchema > 0
+        ? `nothing DECLARES a schema — 0 of ${n} affordances declare an input shape (${counts.withMinedInputSchema} carry one mined from handler source) and output is null in ${n} of ${n}.`
+        : `input and output are null in ${n} of ${n} affordances — the manifest cannot say what to send or what comes back.`
+    );
   }
   if (tools.every((t) => t.transport.declared === 'http')) {
     gaps.push('transport.type has one member ("http") — it cannot express gRPC, stdio, or a named pipe, so it labels them all http.');
@@ -1188,14 +1205,19 @@ function indexBand(surface) {
   // D7 — the absence rate is stated ONCE, here, and the cards mark it in one muted line each.
   // The to-do sentence rides with the statement, not with 84 copies of it.
   const n = surface.tools.length;
-  const { templated, withInputSchema } = surface.counts;
+  const { templated, withDeclaredInputSchema, withMinedInputSchema } = surface.counts;
   const todo =
     templated > 0
       ? ' Run <code>/vibe-access:describe</code> to author the missing explanations.'
       : '';
+  // mined != declared, and the sheet's one input-coverage statement says which (§13.1.5).
+  const minedClause =
+    withMinedInputSchema > 0
+      ? ` · ${withMinedInputSchema} carry a shape mined from handler source`
+      : '';
   const note =
     `<p class="quiet absence-note">${templated} of ${n} descriptions are scan templates · ` +
-    `${withInputSchema} of ${n} declare an input schema. Stated once here — each card marks its ` +
+    `${withDeclaredInputSchema} of ${n} declare an input schema${minedClause}. Stated once here — each card marks its ` +
     `own hole in one line, not a wall.${todo}</p>`;
   return [
     '<section class="band" data-band="index">',

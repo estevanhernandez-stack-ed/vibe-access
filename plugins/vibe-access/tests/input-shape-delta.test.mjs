@@ -99,6 +99,16 @@ describe('map — mined shapes land in input, declared beats mined', () => {
     expect(Object.keys(second.affordances[0].input.properties)).toEqual(['listId', 'note']);
   });
 
+  test('re-map DROPS a mined shape when the handler stops reading', () => {
+    // A mined slot is OWNED by scan. An absent mine clears it — otherwise the manifest
+    // keeps asserting "mined from f.js" for a property that file no longer reads.
+    const first = buildManifest(inventory({ inputShape: SHAPE }), { baseUrls, now: NOW });
+    expect(first.affordances[0].input).toEqual(SHAPE);
+    const second = buildManifest(inventory(), { previous: first, baseUrls, now: NOW });
+    expect(second.affordances[0].input).toBeNull();
+    expect(validateManifest(second).valid).toBe(true);
+  });
+
   test('a DECLARED schema survives re-map and is never clobbered by a mined one', () => {
     const declared = { type: 'object', properties: { listId: { type: 'string' } }, required: ['listId'] };
     const previous = buildManifest(inventory(), { baseUrls, now: NOW });

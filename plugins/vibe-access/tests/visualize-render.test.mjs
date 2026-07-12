@@ -560,3 +560,32 @@ describe('graft 11 — the filter bar ships all 8 chips of §6.1 band 3', () => 
     expect(chips.size).toBeGreaterThan(0);
   });
 });
+
+describe('mined is never rendered as declared (§13.1.5, §7.2 axis 3)', () => {
+  // The post-mining WSY corpus: 0 affordances DECLARE a shape, 66 carry one mined out of
+  // the handler source. The absence note is the sheet's one surface-level statement about
+  // input coverage — it may never spend a mined count as a declared one.
+  const DESCRIBED = fixture('manifest-weseeyou-described.json');
+  const v = view(DESCRIBED);
+  const html = render(v);
+
+  test('the counts split declared from mined', () => {
+    expect(v.counts.withDeclaredInputSchema).toBe(0);
+    expect(v.counts.withMinedInputSchema).toBe(66);
+    expect(v.counts.withInputSchema).toBe(66);
+  });
+
+  test('the absence note states 0 declared and names the mined shapes as mined', () => {
+    expect(html).not.toContain('66 of 85 declare an input schema');
+    expect(html).toContain('0 of 85 declare an input schema');
+    expect(html).toContain('66 carry a shape mined from handler source');
+    expect(count(html, 'absence-note"')).toBe(1);
+  });
+
+  test('the schema-coverage finding still fires — mined does not close the declared gap', () => {
+    const f = v.findings.find((x) => x.id === 'schema-coverage');
+    expect(f).toBeTruthy();
+    expect(f.title).toContain('0 of 85');
+    expect(v.schemaGaps.join(' ')).toContain('mined');
+  });
+});
