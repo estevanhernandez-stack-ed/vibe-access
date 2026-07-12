@@ -249,17 +249,37 @@ describe('§7.2 — six axes, MEASURED, never scored', () => {
     expect(names.some((n) => /declared annotation/i.test(n))).toBe(true);
   });
 
-  test('the security axis scans every verify detail for secret-shaped strings', () => {
-    const leaky = one({
-      verified: {
-        status: 'fail',
-        at: '2026-07-09T22:10:42.833Z',
-        runId: 'aaa',
-        detail: 'unexpected 500 — Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.abc.def rejected',
-      },
-    });
-    const axis = gradeSurface(view(leaky)).axes.find((a) => a.id === 'security-hygiene');
-    expect(axis.measures.find((m) => /secret-shaped/i.test(m.name)).value).toBe(1);
+  // The bait is assembled at runtime, never written as a literal. GitHub's secret
+  // scanner reads source files, not runtime values, and it flagged the old literal —
+  // a false positive on our own detector's test fixture. That matters: a recurring
+  // false alarm is how a real alert gets ignored. Nothing here authenticates to
+  // anything — the header is the public {"alg":"HS256"} every HS256 token shares,
+  // and the payload and signature are placeholders.
+  const b64 = (s) => Buffer.from(s).toString('base64').replace(/=+$/, '');
+  const fakeJwt = () => `${b64('{"alg":"HS256"}')}.${b64('{"sub":"fixture"}')}.not-a-signature`;
+  const leakyDetail = (secret) => ({
+    verified: { status: 'fail', at: '2026-07-09T22:10:42.833Z', runId: 'aaa', detail: secret },
+  });
+  const leakCount = (m) =>
+    gradeSurface(view(m))
+      .axes.find((a) => a.id === 'security-hygiene')
+      .measures.find((x) => /secret-shaped/i.test(x.name)).value;
+
+  // One string used to trip two of the detector's three branches at once, so a
+  // broken branch could still pass. Each branch now stands on its own.
+  test('the security axis catches a jwt-shaped string in a verify detail', () => {
+    expect(leakCount(one(leakyDetail(`unexpected 500 — token ${fakeJwt()} rejected`)))).toBe(1);
+  });
+
+  test('the security axis catches a bearer header in a verify detail', () => {
+    expect(leakCount(one(leakyDetail('unexpected 500 — Authorization: Bearer s3cr3t-looking-value rejected')))).toBe(1);
+  });
+
+  test('the security axis catches a key=value secret in a verify detail', () => {
+    expect(leakCount(one(leakyDetail('unexpected 500 — api_key=abcd1234efgh rejected')))).toBe(1);
+  });
+
+  test('a clean surface reports zero secret-shaped strings', () => {
     const clean = WSY_G.axes.find((a) => a.id === 'security-hygiene');
     expect(clean.measures.find((m) => /secret-shaped/i.test(m.name)).value).toBe(0);
     expect(clean.measures.find((m) => /open/i.test(m.name)).value).toBe(15);
