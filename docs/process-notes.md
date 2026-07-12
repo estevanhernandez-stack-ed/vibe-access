@@ -48,3 +48,36 @@ Cart's own notes have flagged for six cycles. Not this cycle's scope; noted for 
 
 **Handoff:** `/scope`, `/prd`, `/spec` compress to pointer-stubs against the canonical spec
 (pattern mm), then `/checklist`, then build.
+
+## /build + /ship — autonomous run (2026-07-11, cycle #1 → v0.2.0 SHIPPED)
+
+All 11 checklist items complete. Final: **371 tests** (was 84 at cycle start; +287), 22 suites,
+pristine. Tag `v0.2.0` + GitHub release + marketplace promotion (`c0e7409`, gate PASS 0-drift,
+validator PASS 15/15) + real-install proven from stable.
+
+**Method:** the build ran as one Workflow — 29 agents, an implementer + an adversarial verifier +
+a fixer per item. **23 findings caught and fixed mid-build**, before the final review ever saw them.
+
+**What the adversaries bought (this is the whole story of the cycle):**
+
+- **Pre-code (3 spec refuters, 19 blocking findings).** The catch that saved the release: `input` is
+  null in 102/102 real affordances and 84 of 85 WeSeeYou descriptions are machine templates. A
+  visualizer alone would have rendered *labeled absences* — "a conviction for each tool, not an
+  explanation for each tool." That forced §13 (input-shape mining + `:describe`) into scope. It
+  delivered: UNDOCUMENTED **84/85 → 0/85**, and 66/85 routes yielded mined input shapes.
+- **Mid-build.** The schema verifier proved the mechanical refusal was still blind to
+  `overrides.tier` on the kind axis, and that `map`'s fixed-field rebuild would have silently
+  dropped `destructive`/`authDetail` on the first re-map. Both were fixed with red-first tests.
+- **Final review.** The page budget was a lie: ≤40 pages was measured against the EMPTY corpus, and
+  post-`:describe` — the state the router now drives users toward — WeSeeYou printed at 50.
+  Re-baselined to ≤32 bare / ≤46 filled, with density tightened and **nothing cut to make the
+  number**. Also: the `derivedFrom` reason lived in a `title=` attribute, so it never printed —
+  0 occurrences in the PDF text layer against 3 in the HTML. Print is half the ask; both fixed.
+
+**Deferred, deliberately (spec §11):** verify transport seam for non-HTTP · dotnet-wpf-desktop
+adapter promotion (waits on Sanduhr) · the full MCP-evolve grader · scan's fail-open lint · verify
+preflight. The `--grade` layer and the MCP branch were sequenced last precisely because they were
+the two allowed to slip; both landed anyway.
+
+**Handoff:** run `/vibe-access:visualize` on an app and print it — that is the deliverable. `/reflect`
+is owed to close the Cart cycle.
