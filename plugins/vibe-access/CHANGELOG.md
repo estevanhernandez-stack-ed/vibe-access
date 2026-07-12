@@ -67,6 +67,29 @@ add a v0.2 field to `agent-access.json`, that app is on v0.2 for good.
   re-map while the scaffolded-survivor path preserved them.
 - Generated descriptions name the effective kind (`Seed:` / `Reset:` / `Capture:`),
   not a blanket `Act:`.
+- **Print carries the derived reasons.** A derived `⚠ DESTRUCTIVE` chip used to hold its
+  reason in a `title=` attribute and the annotation cells' `derived: <why>` was
+  `display:none` in print — so the PDF asserted "derived" and printed the heuristic
+  behind it nowhere. Both now render as real text on paper (screen keeps the compact
+  hover), per §4.3.5: "rendered as derived, always, both channels." The page's honesty
+  about its own inference is the argument for the `destructive` schema field, and it was
+  going missing at exactly the moment the sheet became a document.
+- **THE CALL is pasteable.** The prose that qualifies a call ("Parameters mined from …",
+  "N unnamed path parameters …") moved out of the `<pre>` and onto its own line below it.
+  The copy button copies the `<pre>` — it was handing back a curl with two lines of
+  English glued to the end.
+- **Print density, and an honest page budget.** Run-in parameter rows on paper (same
+  cells, same order; the header's column names move into the cells), tighter leading and
+  card margins, a 0.6rem/~7pt floor on code blocks, the micro-footer run in with the
+  footer, and `break-after: avoid` finally applied to the group bands so a band cannot
+  strand at the foot of a page (§9 — worth ~2 pages, and paid for). Measured through
+  headless Chrome (`emulateMedia({media:'print'})` + `page.pdf`, Letter, 14mm/12mm):
+  the 85-affordance sheet prints **34 → 31 pages pre-`:describe`** and **50 → 44
+  post-`:describe`**; RoRoRo's 17 print **13 → 12**. Spec §10.2.6's single ≤ 40 budget was
+  set against the EMPTY corpus and is retired for two numbers — **≤ 32 bare, ≤ 46
+  post-`:describe`**. The filled sheet is bigger because it carries the authored
+  explanations the empty one didn't, which is the entire point of the release. Nothing was
+  cut to hit a number: the pass ADDED text to every card and still landed 6 pages lighter.
 
 ## [0.1.0] — 2026-07-09
 

@@ -419,7 +419,19 @@ Print is the second render target, designed first-class — the ask was "exporta
 3. **The 626Labs MCP surface:** the `tools/list` payload is captured into `tests/fixtures/` at §16 step 1 — BEFORE the MCP branch is built, so the branch is built from a file on disk, not from spec. This run renders it via `--input` end-to-end. Must show: real inputSchemas rendering as parameter tables, declared annotations where present, the remote-HTTP context-cost panel with the no-deferral verdict. Not a ship gate for the manifest renderer — the manifest path ships on 1–2 alone.
 4. All three PDFs printed (or print-previewed grayscale) and eyeballed at arm's length: the DESTRUCTIVE chip and — on the `--grade` render — the BREACH card must be findable in under five seconds each.
 5. **The ask's own acceptance test, and the build fails on it:** pick three tools at random (seeded) from each rendered sheet. A cold reader must be able to (a) say what the tool does from PURPOSE — a machine template is an automatic fail — and (b) copy THE CALL with every parameter named — a `<UNNAMED_PARAM_1>` placeholder or an empty `arguments: {}` on a tool that takes input is a fail. On the pre-§13 corpus this fails 84/85 on (a) and every POST on (b); that is the recorded baseline, and the post-§13 WSY render must pass it or the release is not done. This is the test the builder's four ask-parts reduce to; everything else in §10 validates the furniture around it.
-6. **Page budget:** the unfiltered bare WSY PDF prints ≤ 40 letter pages. Over budget is a layout bug to fix, not a shrug — "exportable to PDF" implies something a human reads.
+6. **Page budget — two numbers, because there are two corpora.** The unfiltered WSY PDF prints **≤ 32 letter pages pre-`:describe`** and **≤ 46 post-`:describe`** (RoRoRo, 17 affordances: ≤ 13). Over budget is a layout bug to fix, not a shrug — "exportable to PDF" implies something a human reads.
+
+   **The filled sheet is bigger because it carries the authored explanations the empty one didn't** — PURPOSE prose, named parameter tables, WHEN-TO / WHEN-NOT-TO — which are the entire point of the release; a budget that only holds on the empty corpus is a budget for a document nobody wants. The single-number ≤ 40 written here originally was measured against the empty corpus and is retired: it was true of a sheet whose blocks were all holes.
+
+   **Measured** (headless Chrome, `emulateMedia({media:'print'})` + `page.pdf({format:'Letter', margin:14mm/12mm})`, scrubbed fixtures, unfiltered, bare render):
+
+   | corpus | before the print pass | after |
+   |---|---|---|
+   | WSY 85, pre-`:describe` | 34 | **31** |
+   | WSY 85, post-`:describe` | 50 | **44** |
+   | RoRoRo 17 | 13 | **12** |
+
+   The cuts that bought it are **density, never information**: run-in parameter rows on paper (same cells, same order, the header's column names moved into the cells), tighter leading and card margins, a 0.6rem/7pt floor on code blocks, the micro-footer run in with the footer, and the call's qualifying prose moved out of the `<pre>` (which also made the copy button hand back a curl that actually pastes). Nothing was cut to hit a number — the print pass ADDED text to every card (§4.3.5, the derived reasons that a `title=` attribute never printed) and still came in 6 pages under where it started.
 7. **Nothing rendered from a real app lands in the public repo unless scrubbed** — same rule as the fixtures (§10.1). Dogfood HTML/PDFs of WSY/RoRoRo live outside the repo or get the fixture scrub first; a rendered sheet of a live breach is the vulnerability this plugin exists to catch, published.
 
 ---

@@ -857,6 +857,43 @@ function bodyPlaceholders(schema) {
   return body;
 }
 
+// Path names only get used when the source named exactly as many as the path has wildcards.
+// A partial match is a guess about which slot is which, and this page does not guess — it
+// says UNNAMED and means it.
+function pathFill(t) {
+  const rawSegments = String(t.transport.path ?? '').split('/');
+  const wildcards = rawSegments.filter((s) => s === '*').length;
+  const pathNames = propsIn(t.inputSchema, 'path').map(([name]) => name);
+  const named = wildcards > 0 && pathNames.length === wildcards;
+  let n = 0;
+  const filledPath = rawSegments
+    .map((seg) => (seg === '*' ? (named ? `<${pathNames[n++]}>` : `<UNNAMED_PARAM_${(n += 1)}>`) : seg))
+    .join('/');
+  return { filledPath, wildcards, named };
+}
+
+// The prose that qualifies the call is NOT part of the call. It used to sit inside the <pre>,
+// which meant the copy button handed the reader a curl with two lines of English glued to the
+// end — a block that cannot be pasted is not "the call". Same words, same place on the card,
+// one line under the block, and on paper it sets small.
+function callNotes(t) {
+  const notes = [];
+  if (t.transport.real === 'grpc-npipe') {
+    notes.push('gRPC over a Windows named pipe. Drive it with a gRPC client, not an HTTP one.');
+    return notes;
+  }
+  if (t.transport.real !== 'http') return notes;
+  const mined = minedFrom(t.inputSchema);
+  if (mined) notes.push(`Parameters mined from ${mined} — read out of the handler, not declared.`);
+  const { wildcards, named } = pathFill(t);
+  if (wildcards > 0 && !named) {
+    notes.push(
+      `${wildcards} unnamed path parameter${wildcards === 1 ? '' : 's'} — a caller cannot know what goes here.`
+    );
+  }
+  return notes;
+}
+
 function nativeCall(t, surface) {
   const real = t.transport.real;
   if (real === 'grpc-npipe') {
@@ -870,22 +907,10 @@ function nativeCall(t, surface) {
       lines.push(`prereq    ${t.prereqs.join(', ')} must be the first rpc on this connection`);
     }
     if (t.consent.capability) lines.push(`consent   capability ${t.consent.capability}`);
-    lines.push('', 'gRPC over a Windows named pipe. Drive it with a gRPC client, not an HTTP one.');
     return lines.join('\n');
   }
   if (real === 'http') {
-    const rawSegments = String(t.transport.path ?? '').split('/');
-    const wildcards = rawSegments.filter((s) => s === '*').length;
-    // Path names only get used when the source named exactly as many as the path has
-    // wildcards. A partial match is a guess about which slot is which, and this page
-    // does not guess — it says UNNAMED and means it.
-    const pathNames = propsIn(t.inputSchema, 'path').map(([name]) => name);
-    const named = wildcards > 0 && pathNames.length === wildcards;
-    let n = 0;
-    const filledPath = rawSegments
-      .map((seg) => (seg === '*' ? (named ? `<${pathNames[n++]}>` : `<UNNAMED_PARAM_${(n += 1)}>`) : seg))
-      .join('/');
-
+    const { filledPath } = pathFill(t);
     const query = propsIn(t.inputSchema, 'query')
       .map(([name, def]) => `${name}=${encodeURIComponent(String(placeholderFor(name, def)))}`)
       .join('&');
@@ -901,15 +926,6 @@ function nativeCall(t, surface) {
       lines[lines.length - 1] += ' \\';
       lines.push(`  -H 'Content-Type: application/json' \\`);
       lines.push(`  -d '${JSON.stringify(body)}'`);
-    }
-    if (minedFrom(t.inputSchema)) {
-      lines.push('', `Parameters mined from ${minedFrom(t.inputSchema)} — read out of the handler, not declared.`);
-    }
-    if (wildcards > 0 && !named) {
-      lines.push(
-        '',
-        `${wildcards} unnamed path parameter${wildcards === 1 ? '' : 's'} — a caller cannot know what goes here.`
-      );
     }
     return lines.join('\n');
   }
@@ -1140,10 +1156,14 @@ function callBlock(t, surface) {
   // it prints open like every other <details> (§9).
   const real = t.transport.real;
   const collapsible = real === 'http' || real === 'grpc-npipe' ? ' pc' : '';
+  const notes = callNotes(t)
+    .map((n) => `<p class="callnote">${esc(n)}</p>`)
+    .join('');
   return filled([
     '<div class="call">',
     '<div class="call-h">Native<button class="copy no-print" type="button">copy</button></div>',
     `<pre class="code">${esc(nativeCall(t, surface))}</pre>`,
+    notes,
     `<details class="mcp${collapsible}"${collapsible ? '' : ' open'}>`,
     '<summary class="call-h">MCP projection<button class="copy no-print" type="button">copy</button></summary>',
     `<pre class="code">${esc(mcpProjection(t))}</pre>`,
@@ -1182,6 +1202,17 @@ function chipsOf(t, opts = {}) {
     if (t.grades) chips.push(`<span class="chip grade g-${t.grades.letter}">GRADE ${t.grades.letter}</span>`);
   }
   return chips.join('');
+}
+
+// §4.3.5 / §6.2 — a derived chip owes the reader its reason in BOTH channels: "hover AND print
+// show the derivedFrom string". A `title=` attribute is a screen affordance and nothing else —
+// it renders in no PDF, and the printed sheet said ⚠ DESTRUCTIVE with the heuristic behind it
+// nowhere on the page. The page's honesty about its own inference IS the argument for the
+// schema field (§8.3), so the reason prints as text, beside the chip it explains.
+function chipProvenance(t) {
+  const why = t.destructive.value === true ? derivedWhy(t.destructive.provenance) : null;
+  if (!why) return '';
+  return `<p class="chip-why"><b>⚠ DESTRUCTIVE</b> is derived, not declared — ${esc(why)}</p>`;
 }
 
 // §7.1 — the grade is a smoke alarm, not a judge. The drawer is how a reader overrules it in
@@ -1292,6 +1323,7 @@ function renderCard(t, surface, opts) {
   return [
     `<article class="card" id="tool-${escAttr(id)}" data-kind="${escAttr(t.kind ?? '')}" data-tier="${escAttr(t.tier ?? '')}" data-auth="${escAttr(t.consent.mode ?? '')}" data-vclass="${escAttr(t.verification.class)}" data-search="${escAttr(searchIndex(t))}">`,
     `<header class="card-h"><code class="tname">${wbr(t.name)}</code><a class="anchor no-print" href="#tool-${escAttr(id)}" title="link to this tool">#</a><span class="rail">${chipsOf(t, opts)}</span></header>`,
+    chipProvenance(t),
     route,
     prereq,
     blocks,
@@ -1781,6 +1813,11 @@ input[type=search]{font-family:var(--font-mono);font-size:.75rem;background:var(
 .chip.filled{background:var(--magenta);border-color:var(--magenta);color:#fff;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 .chip.risk{border-color:var(--magenta);color:var(--magenta)}
 .chip.dotted{border-style:dashed}
+/* The derived chip's reason. On screen the chip's dotted underline + title carry it (the rail
+   stays a rail); on paper — and in the ink preview, which IS the paper preview — it is text.
+   Hidden by the screen rule below, never by a print rule. */
+.chip-why{margin:6px 0 0;font-size:.72rem;color:var(--ink-3)}
+.chip-why b{font-weight:600;letter-spacing:.06em}
 .route{margin:8px 0;font-size:.82rem;color:var(--ink-2)}
 .verb{color:var(--cyan);font-family:var(--font-mono)}
 /* The unknown parameter is a GAP, not a fire: styled + footnoted, never danger-inked (D11). */
@@ -1811,6 +1848,8 @@ input[type=search]{font-family:var(--font-mono);font-size:.75rem;background:var(
 .call-h{display:flex;justify-content:space-between;align-items:center;font-size:.68rem;letter-spacing:.1em;color:var(--ink-3);margin-top:8px}
 summary.call-h{cursor:pointer}
 pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:3px;padding:10px;font-size:.76rem;overflow-x: auto;white-space:pre-wrap;overflow-wrap: anywhere;margin:4px 0}
+/* The note that qualifies the call, outside the block the copy button copies. */
+.callnote{margin:2px 0 0;font-size:.72rem;color:var(--ink-3)}
 .card-f{margin-top:12px;padding-top:8px;border-top:1px solid var(--line);font-size:.72rem;color:var(--ink-2)}
 .vclass{letter-spacing:.08em}
 .v-open,.v-error{color:var(--magenta)}
@@ -1870,6 +1909,10 @@ blockquote{margin:0 0 8px;padding-left:10px;border-left:2px solid var(--line);co
   :root[data-density=rows]:not([data-ink]) .card.open .block,
   :root[data-density=rows]:not([data-ink]) .card.open .route,
   :root[data-density=rows]:not([data-ink]) .card.open .card-f{display:block}
+  /* The chip's reason is a hover on the live page and a printed line on paper (§6.2). The
+     hiding happens HERE, on screen — never in @media print, where the whole point is that it
+     shows. The ink preview is the paper preview, so it opts out and shows the line. */
+  :root:not([data-ink]) .chip-why{display:none}
 }
 
 /* The ink preview: the same palette paper gets, on screen, before anyone hits print. */
@@ -1884,41 +1927,72 @@ ${INK_RULES(':root')}
   .no-print{display:none!important}
   pre.code{white-space:pre-wrap;overflow-wrap: anywhere}
   .card,.params,.group-band{break-inside:avoid}
-  h3{break-after:avoid}
+  /* §9 — "break-after: avoid on group headers (no orphaned band at a page foot)". h3 alone only
+     bound the h3 to the two summary lines inside its own div; nothing stopped the whole band
+     from landing at the foot of a page with its first card overleaf. Costs ~2 pages on the bare
+     corpus and buys back a real print defect. */
+  h3,.group-band{break-after:avoid}
   [data-band=index]{break-before:page}
   details:not(.pc)>*{display:block!important}
   details.pc>summary::marker,details.pc>summary::-webkit-details-marker{color:var(--ink-3)}
   body.filtered .print-filter{display:block;border:1px solid var(--magenta);color:var(--magenta);padding:6px 8px}
   a[href^="http"]::after{content:" (" attr(href) ")"}
 
-  /* Page budget (§10.2.6): 85 affordances land under 40 letter pages, and break-inside:avoid
-     means a card taller than half a page costs a whole one. The cuts are density, never
-     information — every block keeps its label and its words, and THE CALL keeps every line
-     a reader pastes. */
-  body{line-height:1.3}
-  .card{padding:5px 8px;margin:4px 0;font-size:.84rem;line-height:1.25}
-  .route{margin:1px 0;font-size:.76rem}
-  .block{margin-top:2px}
-  .block h4{display:inline;margin-right:6px;font-size:.62rem}
+  /* Page budget (§10.2.6). The cuts are DENSITY, never information — every block keeps its
+     label and its words, every derived reason keeps its sentence, and THE CALL keeps every
+     line a reader pastes. break-inside:avoid means a card taller than half a page costs a
+     whole one, so the leading, the block runs and the table are where the pages come from. */
+  body{line-height:1.25}
+  h2{margin:22px 0 8px}
+  .lede p{margin:12px 0}
+  .band{margin-bottom:4px}
+  /* .8rem is ~9.6pt of body text. That is the floor: the sheet is read, not skimmed, and a
+     page budget bought with unreadable type is the dishonesty this plugin exists to prevent. */
+  .card{padding:3px 6px;margin:2px 0;font-size:.8rem;line-height:1.2}
+  .tname{font-size:.88rem}
+  .route{margin:0;font-size:.74rem}
+  .chip-why{margin:0;font-size:.66rem}
+  .block{margin-top:1px}
+  .block h4{display:inline;margin-right:6px;font-size:.6rem}
   .block p{display:inline;margin:0}
   .block p+p{margin-left:6px}
   /* The short blocks flow as one labeled run: every label and every word survives, the four
      blank lines between them do not. */
   .block[data-block=when-to-use],.block[data-block=when-not-to-use],
   .block[data-block=input],.block[data-block=output]{display:inline;margin:0 10px 0 0}
-  .call-h{margin-top:2px;font-size:.6rem}
-  .anns{display:block;font-size:.7rem}
+  .call-h{margin-top:1px;font-size:.58rem}
+  .anns{display:block;font-size:.66rem}
   .ann{display:inline;border:0;padding:0;background:none}
   .ann+.ann::before{content:" · "}
   .ann-k{display:inline}
   .ann-k::after{content:" "}
-  .ann .why{display:none}
-  .index .row{padding:1px 4px}
-  .group-band{margin-top:14px;padding-top:6px}
-  .params th,.params td{padding:1px 6px 1px 0}
-  pre.code{padding:4px;margin:2px 0;font-size:.66rem;line-height:1.3}
-  .card-f{margin-top:4px;padding-top:3px;font-size:.68rem}
-  .micro{margin-top:1px}
+  /* The derived reason PRINTS (F2). "derived: true" with the heuristic hidden is the sheet
+     asking to be trusted — the same fail the plugin exists to catch. It runs in beside the
+     cell it explains rather than costing a line of its own. */
+  .ann .why{display:inline;margin:0;font-size:1em}
+  .ann .why::before{content:" — "}
+  .index .row{padding:0 4px}
+  .group-band{margin-top:12px;padding-top:5px}
+  /* The parameter table is a 5-column grid on screen. On paper the description column is
+     squeezed to a ~40-char measure and every row wraps two or three deep — the same rows cost
+     three times the ink for no gain. Print runs each row in as one full-measure line: same
+     cells, same order, nothing dropped. The header's column names go with it, so the one cell
+     whose value cannot name itself (the default) carries its label inline. */
+  .params{font-size:.7rem}
+  .params,.params tbody,.params tr{display:block}
+  .params thead{display:none}
+  .params tr{border-bottom:1px solid var(--line);padding:0}
+  .params td{display:inline;border:0;padding:0;vertical-align:baseline}
+  .params td+td::before{content:" · "}
+  .params td:nth-child(4)::before{content:" · default "}
+  /* 0.6rem mono is ~7pt on paper — the floor, not a target. Below this the call block stops
+     being something a human reads and the page budget starts buying pages with legibility. */
+  pre.code{padding:2px 4px;margin:1px 0;font-size:.6rem;line-height:1.2}
+  .callnote{margin:0;font-size:.58rem}
+  .card-f{margin-top:3px;padding-top:2px;font-size:.66rem}
+  /* The micro-footer runs in with the footer rather than taking a line of its own. A page torn
+     out of the PDF still says app · source · run — the identity channel is intact (§6.2 D6). */
+  .micro{display:inline;margin:0 0 0 8px}
 }
 @page{size:letter portrait;margin:14mm 12mm}
 `;

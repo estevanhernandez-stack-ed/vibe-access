@@ -268,6 +268,75 @@ describe('print (§9) — the ink palette is token-driven, not patched per selec
     expect(p).not.toContain('.card .route{display:none}');
   });
 
+  // F2 — the review found the derived reason on paper in exactly zero places: the DESTRUCTIVE
+  // chip carried it in a `title=` (renders in no PDF) and `.ann .why{display:none}` deleted the
+  // rest. §6.2: "hover AND print show the derivedFrom string." §4.3.5: "rendered as derived,
+  // always, both channels (hover title + printed provenance line)."
+  test('the derived reason is real TEXT in the markup, not only a title attribute', () => {
+    const stop = view(RORO).tools.find((t) => t.name === 'stop-accounts');
+    const why = stop.destructive.provenance.derived;
+    expect(why).toMatch(/inferred from the word/);
+    // channel 1 — the hover, on screen (attribute: quotes escaped)
+    expect(RORO_HTML).toContain(`title="${why.replace(/"/g, '&quot;')}"`);
+    // channel 2 — the printed line, in a real element with real text
+    expect(RORO_HTML).toContain(`<p class="chip-why"><b>⚠ DESTRUCTIVE</b> is derived, not declared — ${why}</p>`);
+  });
+
+  test('every derived annotation prints its reason — a derived cell with no why is a bare claim', () => {
+    for (const [html, json] of [[WSY_HTML, WSY], [RORO_HTML, RORO]]) {
+      const reasons = new Set();
+      for (const t of view(json).tools) {
+        for (const k of ['readOnly', 'destructive', 'idempotent', 'openWorld']) {
+          const p = t.annotations[k].provenance;
+          if (p && typeof p === 'object' && p.derived) reasons.add(p.derived);
+        }
+      }
+      expect(reasons.size).toBeGreaterThan(0);
+      for (const r of reasons) {
+        expect(html).toContain(`<span class="why">${r}</span>`);
+      }
+    }
+  });
+
+  test('NO print rule hides the elements that carry a derived reason', () => {
+    const p = printBlock(WSY_HTML);
+    // The regression this pins: `.ann .why{display:none}` — the whole reason, gone at the one
+    // moment the sheet claims to be a document.
+    const hidden = p
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => /display:\s*none/.test(l))
+      .filter((l) => /\.why|\.chip-why/.test(l));
+    expect(hidden).toEqual([]);
+    expect(p).toContain('.ann .why{display:inline');
+    // ...and the print block never re-hides the chip line either.
+    expect(p).not.toMatch(/\.chip-why\{[^}]*display:\s*none/);
+  });
+
+  test('the screen is where the compact channel lives — and only the screen', () => {
+    // The hiding is a SCREEN rule, so paper cannot inherit it. Delete the screen rule and the
+    // sheet gets noisier; delete a print rule and the sheet gets dishonest.
+    const screen = WSY_HTML.split('@media screen{')[1].split('\n}')[0];
+    expect(screen).toContain(':root:not([data-ink]) .chip-why{display:none}');
+    // The ink preview IS the paper preview: it shows what paper shows.
+    expect(screen).not.toContain('[data-ink] .chip-why{display:none}');
+  });
+
+  test('THE CALL is pasteable — the prose that qualifies it lives outside the code block', () => {
+    // The copy button copies the <pre>. Prose glued to the end of a curl is a command that
+    // fails on paste, and "both copyable" is the §6.2 contract.
+    const after = render(view(fixture('manifest-weseeyou-described.json')));
+    const pres = [...after.matchAll(/<pre class="code">([\s\S]*?)<\/pre>/g)].map((m) => m[1]);
+    expect(pres.length).toBeGreaterThan(0);
+    for (const pre of pres) {
+      expect(pre).not.toContain('Parameters mined from');
+      expect(pre).not.toContain('a caller cannot know what goes here');
+    }
+    // The words are not gone — they moved one line down, and they print.
+    expect(after).toContain('<p class="callnote">Parameters mined from');
+    expect(printBlock(after)).not.toMatch(/\.callnote\{[^}]*display:\s*none/);
+  });
+
   test('the MCP projection is a details that stays shut on paper when a native call exists', () => {
     expect(count(WSY_HTML, '<details class="mcp pc">')).toBe(85);
     expect(count(RORO_HTML, '<details class="mcp pc">')).toBe(17);
@@ -275,6 +344,32 @@ describe('print (§9) — the ink palette is token-driven, not patched per selec
     expect(MCP_HTML).not.toContain('class="mcp pc"');
     expect(MCP_HTML).toContain('<details class="mcp" open>');
     expect(printBlock(WSY_HTML)).toContain('details:not(.pc)>*{display:block!important}');
+  });
+
+  // §10.2.6 — the page budget is a shipping criterion, and the cuts that buy it are DENSITY.
+  // The one rule: a print rule may change how a fact is set, never whether it is set.
+  test('the parameter table runs in on paper — same cells, same order, one line each', () => {
+    const p = printBlock(WSY_HTML);
+    expect(p).toContain('.params,.params tbody,.params tr{display:block}');
+    expect(p).toContain('.params td{display:inline');
+    expect(p).toContain('.params thead{display:none}');
+    // The header carried the column names; when it goes, the one cell whose value cannot name
+    // itself takes its label with it. Losing a column name is losing information.
+    expect(p).toContain('.params td:nth-child(4)::before{content:" · default "}');
+  });
+
+  test('no print rule deletes a fact — only the chrome and the empty rows may go', () => {
+    const p = printBlock(WSY_HTML);
+    // Everything the sheet is allowed to hide on paper: interactive chrome, the hidden-by-filter
+    // cards, the table header whose names moved into the cells. Anything else that goes dark in
+    // print is a fact the PDF stops carrying — the F2 class of bug.
+    const allowed = ['.no-print', '.params thead', 'details.pc>summary::-webkit-details-marker'];
+    const killers = p
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => /display:\s*none/.test(l))
+      .filter((l) => !allowed.some((sel) => l.startsWith(sel)));
+    expect(killers).toEqual([]);
   });
 });
 
