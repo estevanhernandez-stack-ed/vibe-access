@@ -809,12 +809,30 @@ function propsIn(schema, slot) {
 }
 
 // An unknown type renders as a NAMED placeholder — `<listId>`, never a fabricated type.
-const placeholderFor = (name, def) => {
+// A nested object/array with a DECLARED shape recurses: a call a reader can paste names
+// every parameter, including the ones that live one level down. An empty `{}` where the
+// schema declared five nested fields is a call that does not run (§10.2.5).
+const MAX_NEST = 4;
+const placeholderFor = (name, def, depth = 0) => {
   const type = def?.type ?? 'unknown';
   if (type === 'number' || type === 'integer') return 0;
   if (type === 'boolean') return false;
-  if (type === 'array') return [];
-  if (type === 'object') return {};
+  if (type === 'array') {
+    const items = def?.items;
+    if (items && typeof items === 'object' && depth < MAX_NEST) {
+      return [placeholderFor(`${name}Item`, items, depth + 1)];
+    }
+    return [];
+  }
+  if (type === 'object') {
+    const props = def?.properties;
+    if (props && typeof props === 'object' && Object.keys(props).length > 0 && depth < MAX_NEST) {
+      const out = {};
+      for (const [k, d] of Object.entries(props)) out[k] = placeholderFor(k, d, depth + 1);
+      return out;
+    }
+    return {};
+  }
   return `<${name}>`;
 };
 
@@ -896,9 +914,13 @@ function mcpProjection(t) {
     props && Object.keys(props).length > 0
       ? Object.fromEntries(Object.entries(props).map(([name, def]) => [name, placeholderFor(name, def)]))
       : null;
-  const args = body
-    ? JSON.stringify(body, null, 6).replace(/\n/g, '\n    ')
-    : '{} /* unknown — no input schema declared or minable */';
+  // Three input states, never two: a DECLARED-empty schema is a statement (this tool takes
+  // nothing), and rendering it as an absence puts a false claim on the card.
+  const emptyComment =
+    inputState(t.inputSchema) === 'declared-empty'
+      ? '{} /* declared empty — the surface says this tool takes no arguments */'
+      : '{} /* unknown — no input schema declared or minable */';
+  const args = body ? JSON.stringify(body, null, 6).replace(/\n/g, '\n    ') : emptyComment;
   return [
     '{',
     '  "jsonrpc": "2.0",',
@@ -921,12 +943,18 @@ function mcpProjection(t) {
 const filled = (html) => ({ html, empty: false });
 const absent = (words) => ({ html: `<span class="none">${esc(words)}</span>`, empty: true });
 
+// The absent-description slug is surface-specific. There is no scan and no template on an
+// MCP surface — telling an MCP reader they are looking at "the scan template" is a claim
+// about an artifact that does not exist.
 const TEMPLATE_SLUG =
   '<p class="tmpl-note">No authored description — this is the scan template.</p>';
+const MCP_NO_DESC_SLUG =
+  '<p class="tmpl-note">No description — the server ships none for this tool.</p>';
+const noDescSlug = (t) => (t.purposeSource === 'mcp' ? MCP_NO_DESC_SLUG : TEMPLATE_SLUG);
 
 function purposeBlock(t, opts) {
   if (!t.purpose) {
-    return filled(`<span class="chip">UNDOCUMENTED</span>${TEMPLATE_SLUG}`);
+    return filled(`<span class="chip">UNDOCUMENTED</span>${noDescSlug(t)}`);
   }
   if (t.purposeTemplated) {
     const body = opts.terse ? '' : `<p class="tmpl">${esc(t.purpose)}</p>`;
@@ -957,21 +985,49 @@ function whenBlock(t, negative) {
 const minedFrom = (schema) => (schema && typeof schema === 'object' ? (schema['x-mined-from'] ?? null) : null);
 const IN_LABEL = { body: 'body', query: 'query', path: 'path' };
 
+// Three input states, never two (§13.1.5 extends to shape, not just provenance):
+//   declared        — a schema with properties
+//   declared-empty  — the surface DECLARES the tool takes nothing. A statement, not a hole.
+//   absent          — no schema at all. The only real hole.
+function inputState(schema) {
+  if (!schema || typeof schema !== 'object') return 'absent';
+  const props = schema.properties;
+  if (props && typeof props === 'object' && Object.keys(props).length > 0) return 'declared';
+  return 'declared-empty';
+}
+
+// A nested object is not an empty one. Children flatten into the table with dotted names
+// (`data.title`) so the parameter list matches the call the reader is about to paste.
+function schemaRows(props, { prefix, required, requirednessStated, depth }) {
+  return Object.entries(props).flatMap(([name, def]) => {
+    const full = `${prefix}${name}`;
+    const type = def?.enum ? `enum(${def.enum.map((v) => esc(v)).join(' | ')})` : esc(def?.type ?? 'unknown');
+    const req = requirednessStated ? (required.has(name) ? 'required' : 'optional') : 'unstated';
+    const dflt = def?.default === undefined ? '—' : esc(JSON.stringify(def.default));
+    const where = def?.['x-in'] ? `in ${IN_LABEL[def['x-in']] ?? esc(def['x-in'])}` : esc(def?.description ?? '');
+    const row = `<tr><td><code>${wbr(full)}</code></td><td>${type}</td><td>${req}</td><td>${dflt}</td><td>${where}</td></tr>`;
+
+    const nested =
+      def?.type === 'object' ? def : def?.type === 'array' && def?.items?.type === 'object' ? def.items : null;
+    const childProps = nested?.properties;
+    if (!childProps || Object.keys(childProps).length === 0 || depth >= MAX_NEST) return [row];
+    const kids = schemaRows(childProps, {
+      prefix: `${full}${def.type === 'array' ? '[].' : '.'}`,
+      required: new Set(Array.isArray(nested.required) ? nested.required : []),
+      requirednessStated: Array.isArray(nested.required),
+      depth: depth + 1,
+    });
+    return [row, ...kids];
+  });
+}
+
 function schemaTable(schema) {
   const props = schema?.properties ?? null;
-  if (!props || Object.keys(props).length === 0) return null;
+  if (inputState(schema) !== 'declared') return null;
   const mined = minedFrom(schema);
   const requirednessStated = Array.isArray(schema.required) || (mined && schema['x-mined-by'] !== 'reads');
   const required = new Set(Array.isArray(schema.required) ? schema.required : []);
-  const rows = Object.entries(props)
-    .map(([name, def]) => {
-      const type = def?.enum ? `enum(${def.enum.map((v) => esc(v)).join(' | ')})` : esc(def?.type ?? 'unknown');
-      const req = requirednessStated ? (required.has(name) ? 'required' : 'optional') : 'unstated';
-      const dflt = def?.default === undefined ? '—' : esc(JSON.stringify(def.default));
-      const where = def?.['x-in'] ? `in ${IN_LABEL[def['x-in']] ?? esc(def['x-in'])}` : esc(def?.description ?? '');
-      return `<tr><td><code>${wbr(name)}</code></td><td>${type}</td><td>${req}</td><td>${dflt}</td><td>${where}</td></tr>`;
-    })
-    .join('');
+  const rows = schemaRows(props, { prefix: '', required, requirednessStated, depth: 0 }).join('');
   // mined != declared, and the card never lets a reader guess which one they are holding.
   const tag = mined
     ? `<span class="tag dotted" title="read out of the handler source by scan — not a declared schema">mined from ${esc(mined)}</span>`
@@ -992,6 +1048,14 @@ function inputBlock(t) {
       .join('');
     return filled(
       `<table class="params"><thead><tr><th>name</th><th>type</th><th>required</th><th>default</th><th>description</th></tr></thead><tbody>${rows}</tbody></table>`
+    );
+  }
+  if (inputState(t.inputSchema) === 'declared-empty') {
+    // Declared-and-empty is a fact the surface stated. It is counted as a declaration in the
+    // index band, and the card says the same thing the count does.
+    const who = t.purposeSource === 'mcp' ? 'the server' : 'the surface';
+    return filled(
+      `<span class="tag" title="the surface declares an input schema with no properties">declared by the server</span><p>Declares no arguments — ${who} says this tool takes nothing.</p>`
     );
   }
   return absent('no schema declared');
@@ -1375,7 +1439,16 @@ function cardsBand(surface, opts) {
     .map(([name, tools]) => {
       const prefix = tools[0].transport.sharedPrefix;
       const factored = prefix ? ` · shared prefix <code>${wbr(prefix)}</code> factored out of every card below` : '';
-      const auths = [...new Set(tools.map((t) => t.consent.mode ?? 'none'))].join(', ');
+      // Silence is not `none`. `auth: none` means OPEN in the legend — printing it for an
+      // undeclared consent mode asserts an open surface the source never claimed, which is
+      // fail-open rendered as a fact. Undeclared says "not declared"; a surface where NOTHING
+      // declares a mode (a tools/list payload) drops the clause entirely — the lede already
+      // said it once.
+      const modes = tools.map((t) => t.consent.mode);
+      const allUndeclared = modes.every((m) => !m);
+      const auths = allUndeclared
+        ? ''
+        : ` · auth: ${esc([...new Set(modes.map((m) => m ?? 'not declared'))].join(', '))}`;
       const verify = verifyDecompositionSentence(
         tools.reduce(
           (acc, t) => {
@@ -1395,7 +1468,7 @@ function cardsBand(surface, opts) {
       );
       return [
         `<div class="group-band"><h3>${esc(name)}</h3>`,
-        `<p class="quiet">${tools.length} affordance${tools.length === 1 ? '' : 's'} · auth: ${esc(auths)}${factored}</p>`,
+        `<p class="quiet">${tools.length} affordance${tools.length === 1 ? '' : 's'}${auths}${factored}</p>`,
         `<p class="quiet">${esc(verify)}</p></div>`,
         tools.map((t) => renderCard(t, surface, opts)).join(''),
       ].join('');
