@@ -332,6 +332,9 @@ describe('graft 3 — print inks + DESTRUCTIVE scarcity (D10, D11)', () => {
     const allowed = [
       '.chip.filled', '.chip.risk', '.banner.risk', '.v-open,.v-error',
       'body.filtered .print-filter',
+      // A breach finding card (--grade band 9) is danger — the ink is spent on the one thing
+      // it exists for. An axis row, a tile, and a letter chip are not, and none of them take it.
+      '.finding.sev-breach',
     ];
     const offenders = cssOf(WSY_HTML)
       .split('\n')

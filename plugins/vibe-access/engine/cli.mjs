@@ -130,7 +130,10 @@ const COMMANDS = {
     // The render clock is computed ONCE here and passed in; the renderer is pure (D24).
     const renderedAt = new Date().toISOString();
     const surface = normalize(json, { renderedAt, noSource: flags['no-source'] === true });
-    const html = render(surface, { terse: flags.terse === true });
+    // §7 / D25 — the audit layer is opt-in. Without --grade this is the reference sheet: tools,
+    // calls, explanations. The flag adds the headline, verdict, report card, findings, THE BAR,
+    // SCHEMA GAPS and the A-F letters — and grades no tool count anywhere.
+    const html = render(surface, { terse: flags.terse === true, grade: flags.grade === true });
     const outPath = flags.out
       ? resolve(appRoot, String(flags.out))
       : join(appRoot, 'docs', 'vibe-access', `agent-access-${renderedAt.slice(0, 10)}.html`);

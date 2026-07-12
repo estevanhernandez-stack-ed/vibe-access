@@ -8,6 +8,7 @@
 //   (b) tool count is never graded.
 
 import { validateManifest } from './schema.mjs';
+import { gradeSurface } from './grade.mjs';
 
 export const TOOLVIEW_KEYS = [
   'name', 'purpose', 'purposeSource', 'purposeTemplated', 'kind', 'tier',
@@ -1077,7 +1078,7 @@ function callBlock(t, surface) {
 
 // ---------------------------------------------------------------- chips + card
 
-function chipsOf(t) {
+function chipsOf(t, opts = {}) {
   const chips = [];
   const shouts = /\bDESTRUCTIVE\b/i.test(t.purpose);
   if (t.destructive.value === true) {
@@ -1093,7 +1094,51 @@ function chipsOf(t) {
   if (t.streaming.value) chips.push('<span class="chip dotted">≋ STREAMING</span>');
   if (t.verification.class === 'error') chips.push('<span class="chip risk">✕ FAILED</span>');
   if (t.verification.class === 'open') chips.push('<span class="chip risk">✕ GATE OPEN</span>');
+  // The audit chips ride with --grade only (§7, D25). The underlying facts — auth mode, verify
+  // class, tier, the destructive provenance — are already on the bare card; the letter and the
+  // contradiction names are the judgment, and the judgment is opt-in.
+  if (opts.grade) {
+    if (t.verification.class === 'open') chips.push('<span class="chip risk">✕ BREACH</span>');
+    if (t.tier === 'prod-safe' && t.destructive.value === true) {
+      chips.push('<span class="chip risk">✕ TIER-CONFLICT</span>');
+    }
+    if (t.grades) chips.push(`<span class="chip grade g-${t.grades.letter}">GRADE ${t.grades.letter}</span>`);
+  }
   return chips.join('');
+}
+
+// §7.1 — the grade is a smoke alarm, not a judge. The drawer is how a reader overrules it in
+// one glance: every check, its verdict, and the predicate it ran.
+const D_LABEL = {
+  D1: 'purpose beyond restatement',
+  D2: 'when-to-use context',
+  D3: 'when-NOT-to-use',
+  D4: 'inputs named in prose',
+  D5: 'result shape named',
+  D6: 'side effects stated',
+  D7: 'consent stated',
+};
+
+const VERDICT_WORD = { pass: '✓ pass', fail: '✕ fail', na: '— N/A (out of the denominator)' };
+
+function gradeDrawer(t) {
+  if (!t.grades) return '';
+  const rows = Object.entries(t.grades.checks)
+    .map(
+      ([k, v]) =>
+        `<li class="d-${v}"><b>${k}</b> ${esc(D_LABEL[k])} — ${esc(VERDICT_WORD[v])}</li>`
+    )
+    .join('');
+  const applicable = Object.values(t.grades.checks).filter((v) => v !== 'na');
+  const passed = applicable.filter((v) => v === 'pass').length;
+  const badges = t.badges.length > 0 ? t.badges.join(', ') : 'none of the five';
+  return [
+    '<details class="grade-why">',
+    `<summary>why this grade — ${esc(t.grades.letter)} (${passed} of ${applicable.length} applicable checks)</summary>`,
+    `<ul class="dchecks">${rows}</ul>`,
+    `<p class="quiet">Badges passed: ${esc(badges)}.</p>`,
+    '</details>',
+  ].join('');
 }
 
 const CLASS_WORD = {
@@ -1169,10 +1214,11 @@ function renderCard(t, surface, opts) {
   const id = slug(t.name);
   return [
     `<article class="card" id="tool-${escAttr(id)}" data-kind="${escAttr(t.kind ?? '')}" data-tier="${escAttr(t.tier ?? '')}" data-auth="${escAttr(t.consent.mode ?? '')}" data-vclass="${escAttr(t.verification.class)}" data-search="${escAttr(searchIndex(t))}">`,
-    `<header class="card-h"><code class="tname">${wbr(t.name)}</code><a class="anchor no-print" href="#tool-${escAttr(id)}" title="link to this tool">#</a><span class="rail">${chipsOf(t)}</span></header>`,
+    `<header class="card-h"><code class="tname">${wbr(t.name)}</code><a class="anchor no-print" href="#tool-${escAttr(id)}" title="link to this tool">#</a><span class="rail">${chipsOf(t, opts)}</span></header>`,
     route,
     prereq,
     blocks,
+    opts.grade ? gradeDrawer(t) : '',
     cardFooter(t, surface, opts),
     '</article>',
   ].join('');
@@ -1217,10 +1263,17 @@ function masthead(surface, opts) {
 const ledeBand = (surface) =>
   `<section class="band lede" data-band="lede"><p>${esc(surface.lede)}</p></section>`;
 
-function indexBand(surface) {
+function indexBand(surface, opts = {}) {
   const rows = surface.tools
     .map((t) => {
-      const doc = isUndocumented(t) ? '<span class="mini">UNDOCUMENTED</span>' : '';
+      // §6.1 band 3 — the A-F letter chip REPLACES the UNDOCUMENTED marker under --grade.
+      // The bare index keeps the marker and carries no letters.
+      const doc =
+        opts.grade && t.grades
+          ? `<span class="mini grade g-${t.grades.letter}">${t.grades.letter}</span>`
+          : isUndocumented(t)
+            ? '<span class="mini">UNDOCUMENTED</span>'
+            : '';
       return [
         `<a class="row" href="#tool-${escAttr(slug(t.name))}">`,
         `<code>${wbr(t.name)}</code>`,
@@ -1349,6 +1402,185 @@ function cardsBand(surface, opts) {
     })
     .join('');
   return `<section class="band" data-band="cards"><h2>TOOLS</h2>${sections}</section>`;
+}
+
+// ---------------------------------------------------------------- the --grade bands (§6.1 6-11)
+// Everything below renders ONLY under --grade (D25). The builder asked for a reference sheet;
+// the audit earns its ink when it is invited.
+
+const findingCard = (f) =>
+  [
+    `<article class="finding sev-${escAttr(f.severity)}" id="${escAttr(f.id)}">`,
+    `<h3>${esc(f.title)}</h3>`,
+    `<p class="sev">${esc(f.severity)}</p>`,
+    `<p>${esc(f.body)}</p>`,
+    f.toolRefs.length > 0
+      ? `<p class="quiet">${f.toolRefs
+          .map((n) => `<a href="#tool-${escAttr(slug(n))}"><code>${wbr(n)}</code></a>`)
+          .join(' · ')}</p>`
+      : '',
+    '</article>',
+  ].join('');
+
+// Band 6 — the single worst finding, picked by the severity enum order (the findings array is
+// already sorted by it in the normalizer). WeSeeYou's headline is not a 500.
+function headlineBand(surface) {
+  const worst = surface.findings[0];
+  if (!worst) return '';
+  return [
+    '<section class="band" data-band="headline">',
+    '<h2>THE HEADLINE</h2>',
+    `<div class="banner risk"><h3>${esc(worst.title)}</h3><p>${esc(worst.body)}</p>`,
+    `<p class="quiet"><a href="${escAttr(worst.anchor)}">the evidence</a></p></div>`,
+    '</section>',
+  ].join('');
+}
+
+// Band 7 — five derived tiles, none of which is a count of tools.
+function verdictBand(surface) {
+  const { counts, tools } = surface;
+  const n = counts.total;
+  const prodGets = tools.filter(
+    (t) => t.consent.mode === 'none' && t.tier === 'prod-safe' && t.transport.method === 'GET'
+  ).length;
+  const kinds = Object.entries(counts.byKind).map(([k, v]) => `${v} ${k}`).join(' · ') || 'kind not declared';
+  const destructive = counts.destructive.declared + counts.destructive.derived;
+  const ran = counts.verify.ran;
+  const gate = counts.verify.gateHeld + counts.verify.handleGateHeld;
+  const privilege = tools.filter((t) => PRIVILEGE_RE.test(`${t.name} ${t.transport.path ?? ''}`)).length;
+  const conflicts = tools.filter((t) => t.tier === 'prod-safe' && t.destructive.value === true).length;
+
+  const tile = (label, headline, sub, anchor) =>
+    [
+      `<a class="tile" href="${escAttr(anchor)}">`,
+      `<span class="tile-k">${esc(label)}</span>`,
+      `<span class="tile-v">${esc(headline)}</span>`,
+      `<span class="tile-s">${esc(sub)}</span>`,
+      '</a>',
+    ].join('');
+
+  return [
+    '<section class="band" data-band="verdict">',
+    '<h2>VERDICT</h2>',
+    '<div class="tiles">',
+    tile(
+      'OPEN SURFACE',
+      counts.openSurface > 0 ? `${counts.openSurface} of ${n} callable with no auth` : 'every affordance declares a gate',
+      prodGets > 0 ? `${prodGets} prod GETs among them` : 'no unauthenticated prod GETs',
+      '#security-hygiene'
+    ),
+    tile('REACH', kinds, `${destructive} destructive (declared or derived)`, '#index'),
+    tile(
+      'PROOF',
+      verifyDecompositionSentence(counts.verify),
+      `only ${ran} call${ran === 1 ? '' : 's'} returned data; ${gate} were refused at the gate`,
+      '#report-card'
+    ),
+    tile(
+      'DOCUMENTATION',
+      `${counts.templated} of ${n} descriptions are scan templates`,
+      counts.templated > 0 ? 'run /vibe-access:describe to author the missing explanations' : 'every description is authored',
+      '#the-bar'
+    ),
+    tile(
+      'RISK',
+      `${destructive} destructive · ${privilege} privilege-shaped`,
+      `${conflicts} tier contradiction${conflicts === 1 ? '' : 's'} · ${counts.verify.open} gate${counts.verify.open === 1 ? '' : 's'} answering cold`,
+      '#findings'
+    ),
+    '</div>',
+    '</section>',
+  ].join('');
+}
+
+// Band 8 — six measured rows, then both invariant sentences. No composite letter: there is no
+// formula that would earn one, and an invented weight is a lie with more digits.
+function reportCardBand(surface) {
+  const rows = surface.axes
+    .map((a) => {
+      const body =
+        a.status === 'na'
+          ? `<p class="none">${esc(a.naReason)}</p>`
+          : `<ul class="measures">${a.measures
+              .map((m) => `<li><span class="m-k">${esc(m.name)}</span><span class="m-v">${esc(String(m.value))}</span></li>`)
+              .join('')}</ul>`;
+      return `<div class="axis" id="${escAttr(a.id)}"><h3><a href="${escAttr(a.anchor)}">${esc(a.label)}</a></h3>${body}</div>`;
+    })
+    .join('');
+  return [
+    '<section class="band" data-band="report-card">',
+    '<h2>SURFACE REPORT CARD</h2>',
+    '<p class="quiet">These grade the SURFACE — the manifest as documentation for an agent reader — not the app. Six measured rows: the counts that would have driven a score, printed as-is. No 0-100 number, no composite letter; v0.2 has no formula that would earn one.</p>',
+    `<div class="axes">${rows}</div>`,
+    `<p class="invariant"><b>Tool count is not graded.</b> 17 is not a better number than 85 — "do not chase tool count" is the research's own conclusion. Count reported, explicitly not graded.</p>`,
+    `<p class="invariant">${esc(verifyDecompositionSentence(surface.counts.verify))} Gate-held and handle-gate-held mean the gate worked and the call never ran; handle-gate-held is never folded into gate-held.</p>`,
+    '</section>',
+  ].join('');
+}
+
+// Band 9 — every surface-level finding as a card. Error clusters arrive pre-clustered from the
+// normalizer: one dead subsystem is ONE card, not seven dots.
+function findingsBand(surface) {
+  if (surface.findings.length === 0) {
+    return '<section class="band" data-band="findings"><h2>FINDINGS</h2><p class="quiet">No breach, no unclaimed destruction, no tier contradiction on this surface.</p></section>';
+  }
+  return [
+    '<section class="band" data-band="findings">',
+    '<h2>FINDINGS</h2>',
+    surface.findings.map(findingCard).join(''),
+    '</section>',
+  ].join('');
+}
+
+// Band 10 — the calibration panel. A grade on someone's API is a social object; the reader sees
+// a real A before meeting an F. The cards are COMPUTED by the §7.1 predicates, never hand-picked
+// — when a predicate change demotes an exemplar, the panel quotes whatever actually grades A.
+const LETTER_RANK = { A: 0, B: 1, C: 2, D: 3, F: 4 };
+
+function barBand(surface) {
+  const best = [...surface.tools]
+    .filter((t) => t.grades)
+    .sort((a, b) => LETTER_RANK[a.grades.letter] - LETTER_RANK[b.grades.letter])
+    .filter((t, _i, arr) => t.grades.letter === arr[0].grades.letter)
+    .slice(0, 2);
+  const top = best[0]?.grades.letter ?? 'F';
+  const note =
+    top === 'A'
+      ? 'Computed by the §7.1 predicates, not hand-picked. This is what a passing description looks like on this surface.'
+      : `Nothing on this surface grades A. The best description here computes ${top} — printed with its own checks, so the bar is a real one and not a borrowed one.`;
+  const cards = best
+    .map((t) => {
+      const checks = Object.entries(t.grades.checks)
+        .map(([k, v]) => `<li class="d-${v}"><b>${k}</b> ${esc(VERDICT_WORD[v])}</li>`)
+        .join('');
+      return [
+        '<article class="bar-card">',
+        `<h3><a href="#tool-${escAttr(slug(t.name))}"><code>${wbr(t.name)}</code></a> <span class="chip grade g-${t.grades.letter}">GRADE ${t.grades.letter}</span></h3>`,
+        `<blockquote>${esc(t.purpose)}</blockquote>`,
+        `<ul class="dchecks">${checks}</ul>`,
+        '</article>',
+      ].join('');
+    })
+    .join('');
+  return [
+    '<section class="band" data-band="the-bar">',
+    '<h2>THE BAR</h2>',
+    `<p class="quiet">${esc(note)} The literature says ~97% of tools carry at least one description defect and 56% have unclear purpose (arXiv 2602.14878, 856 tools / 103 servers).</p>`,
+    `<div class="bar">${cards}</div>`,
+    '</section>',
+  ].join('');
+}
+
+// Band 11 — what this surface cannot express, stated once.
+function schemaGapsBand(surface) {
+  if (surface.schemaGaps.length === 0) return '';
+  return [
+    '<section class="band" data-band="schema-gaps" id="schema-gaps">',
+    '<h2>SCHEMA GAPS</h2>',
+    `<ul class="gaps">${surface.schemaGaps.map((g) => `<li>${esc(g)}</li>`).join('')}</ul>`,
+    '<p class="quiet">Each gap is a fact about the surface, not about the app. The §8 schema deltas — overrides.kind, authDetail, destructive — close the ones a field can close.</p>',
+    '</section>',
+  ].join('');
 }
 
 function howToReadBand(surface) {
@@ -1495,6 +1727,43 @@ dl dt{color:var(--cyan);margin-top:12px;font-size:.9rem}
 dl dd{margin:2px 0 0;color:var(--ink-2);font-size:.88rem}
 .print-filter{display:none}
 .hidden{display:none}
+
+/* §7 — the --grade layer. Letters are letters (never color alone), the tiles carry words and
+   not counts of tools, and the danger ink stays scarce: a breach finding is danger, an axis
+   row is not. */
+.chip.grade{letter-spacing:.08em}
+.mini.grade{border:1px solid var(--ink-3);border-radius:2px;padding:0 5px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.tile{display:block;border:1px solid var(--line);border-radius:3px;padding:10px;text-decoration:none;color:var(--ink);break-inside:avoid}
+.tile:hover{border-color:var(--cyan)}
+.tile-k{display:block;font-size:.62rem;letter-spacing:.12em;color:var(--ink-3)}
+.tile-v{display:block;font-size:.9rem;margin-top:4px}
+.tile-s{display:block;font-size:.72rem;color:var(--ink-2);margin-top:4px}
+.axis{border-top:1px solid var(--line);padding-top:8px;margin-top:12px;break-inside:avoid}
+.axis h3{margin:0 0 4px;font-size:.8rem;letter-spacing:.1em}
+.axis h3 a{color:var(--cyan);text-decoration:none}
+.measures{list-style:none;margin:0;padding:0;font-size:.8rem}
+.measures li{display:flex;gap:12px;justify-content:space-between;border-bottom:1px solid var(--line);padding:2px 0}
+.m-k{color:var(--ink-2)}
+.m-v{font-family:var(--font-mono);text-align:right}
+.invariant{border-left:2px solid var(--cyan);padding-left:12px;font-size:.9rem}
+.finding{border:1px solid var(--line);border-radius:4px;padding:12px 14px;margin:12px 0;background:var(--navy-2);break-inside:avoid}
+.finding.sev-breach{border-color:var(--magenta)}
+.finding h3{margin:0 0 2px}
+.finding .sev{font-size:.62rem;letter-spacing:.12em;color:var(--ink-3);margin:0 0 6px}
+.finding a{color:var(--cyan)}
+.bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.bar-card{border:1px solid var(--line);border-radius:4px;padding:12px 14px;background:var(--navy-2);break-inside:avoid}
+.bar-card h3{margin:0 0 6px;font-size:.9rem}
+.bar-card h3 a{color:var(--ink);text-decoration:none}
+blockquote{margin:0 0 8px;padding-left:10px;border-left:2px solid var(--line);color:var(--ink-2);font-size:.86rem}
+.dchecks{list-style:none;margin:0;padding:0;font-size:.74rem;color:var(--ink-2)}
+.dchecks li{padding:1px 0}
+.dchecks .d-na{color:var(--ink-3)}
+.grade-why{margin-top:10px;font-size:.8rem}
+.grade-why summary{cursor:pointer;color:var(--ink-3);font-size:.72rem;letter-spacing:.06em}
+.gaps{margin:0;padding-left:18px;font-size:.86rem;color:var(--ink-2)}
+.gaps li{margin-bottom:4px}
 
 /* Density is a SCREEN affordance only. On paper every card prints whole — the route line, the
    footer (sourceRef · origin · verify class) and the 8px micro-footer are the per-card honesty
@@ -1737,13 +2006,30 @@ export function render(surfaceView, opts = {}) {
         'leave source paths baked into finding titles.'
     );
   }
-  const o = { terse: opts.terse === true, noSource: surfaceView.noSource === true };
-  const island = jsonIsland(surfaceView);
-  const title = `${surfaceView.app ?? 'agent surface'} — agent access`;
+  // §7 / D25 — the audit layer is opt-in, and it is computed on a COPY. The bare sheet is the
+  // ask; a render without the flag is the same document it was before grading existed.
+  const surface = opts.grade === true ? gradeSurface(surfaceView) : surfaceView;
+  const o = {
+    terse: opts.terse === true,
+    noSource: surfaceView.noSource === true,
+    grade: opts.grade === true,
+  };
+  const island = jsonIsland(surface);
+  const title = `${surface.app ?? 'agent surface'} — agent access`;
   // D5 — compact rows are the DEFAULT above 40 tools, and the default is RENDERED, not applied
   // by a script after paint: 85 uncollapsed cards flashing before the JS lands is the exact
   // scroll nobody finishes, and with scripting off it never collapses at all.
-  const density = surfaceView.tools.length > 40 ? ' data-density="rows"' : '';
+  const density = surface.tools.length > 40 ? ' data-density="rows"' : '';
+  const audit = o.grade
+    ? [
+        headlineBand(surface),
+        verdictBand(surface),
+        reportCardBand(surface),
+        findingsBand(surface),
+        barBand(surface),
+        schemaGapsBand(surface),
+      ].join('')
+    : '';
   return [
     '<!doctype html>',
     `<html lang="en"${density}>`,
@@ -1755,13 +2041,14 @@ export function render(surfaceView, opts = {}) {
     '</head>',
     '<body>',
     '<main>',
-    masthead(surfaceView, o),
-    ledeBand(surfaceView),
-    indexBand(surfaceView),
-    prereqBand(surfaceView),
-    cardsBand(surfaceView, o),
-    howToReadBand(surfaceView),
-    provenanceBand(surfaceView, o, island.length),
+    masthead(surface, o),
+    ledeBand(surface),
+    indexBand(surface, o),
+    prereqBand(surface),
+    cardsBand(surface, o),
+    audit,
+    howToReadBand(surface),
+    provenanceBand(surface, o, island.length),
     '</main>',
     `<script type="application/json" id="surface">${island}</script>`,
     `<script>${JS}</script>`,

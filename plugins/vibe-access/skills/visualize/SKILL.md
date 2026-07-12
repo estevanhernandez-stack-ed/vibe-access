@@ -12,7 +12,12 @@ Load skills/guide/SKILL.md. Input is either an `agent-access.json` manifest or a
 
 1. Run `node engine/cli.mjs visualize --app <target>`. It reads `<target>/agent-access.json`
    and writes `<target>/docs/vibe-access/agent-access-<YYYY-MM-DD>.html`.
-   Flags: `--input <file>` · `--out <file>` · `--open` · `--no-source` · `--terse`.
+   Flags: `--input <file>` · `--out <file>` · `--open` · `--no-source` · `--terse` · `--grade`.
+   The bare command is the reference sheet — tools, calls, an explanation each. `--grade` opts
+   into the audit layer AFTER the cards: the worst finding as a headline, the verdict strip, the
+   surface report card (six MEASURED axes, no composite letter), the findings, THE BAR, SCHEMA
+   GAPS, and the A-F description letter on every card. Offer it; never assume it. Nobody asked
+   to be graded.
 2. Say the footprint out loud before it lands: that is the same committed directory the scan
    and verify reports live in, and the file embeds every `sourceRef` unless you pass
    `--no-source`. Offer the gitignore line `docs/vibe-access/*.html` to anyone who does not
