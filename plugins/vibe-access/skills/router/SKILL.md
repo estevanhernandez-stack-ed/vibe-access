@@ -14,13 +14,21 @@ Load skills/guide/SKILL.md first. Then inspect the target app, first match wins:
 4. Manifest exists → run `node engine/cli.mjs gaps --app <path>`. Gaps found →
    recommend `/vibe-access:scaffold` and list the gaps by need. No gaps and any
    affordance is `unverified` or `fail` → recommend `/vibe-access:verify`.
-5. Manifest fully verified → report posture: affordance count by tier/kind, last verify
-   date, and note the layer is MCP-graduation-ready (manual step, out of v0.1 scope).
-6. At any point from step 4 on, if most affordances still carry the machine-template
-   description map generated (`Act: POST /api/lists`), recommend `/vibe-access:describe`
-   and say the count out loud. A verified manifest full of templates is a proven surface
-   nobody can read: the gate holds, and the agent on the other side still cannot tell
-   what the tool does. Proof and documentation are two different holes.
+5. Manifest exists and any affordance still carries the machine-template description
+   map generated (`Act: POST /api/lists`) — i.e. the UNDOCUMENTED count is nonzero →
+   recommend `/vibe-access:describe`, say the count out loud, and say to re-render
+   after. A verified manifest full of templates is a proven surface nobody can read:
+   the gate holds, and the agent on the other side still cannot tell what the tool
+   does. Proof and documentation are two different holes.
+6. Manifest fully verified and described → recommend `/vibe-access:visualize`:
+   **render the sheet — see what an agent sees.** Report posture alongside it —
+   affordance count by tier/kind, last verify date — and note the layer is
+   MCP-graduation-ready (manual step, out of v0.1 scope).
+
+The ladder lands on the v0.2 surfaces on purpose. Step 5 fires whenever the manifest is
+readable-by-machine but not by a human; step 6 is where a proven, documented surface gets
+rendered. A fresh `map` or a fresh `verify` drops the app back onto step 5 or 6 — that is
+the intended handoff, not a special case.
 
 ## When you recommend scaffold, name the interview
 
@@ -39,11 +47,12 @@ the end.
 - On assert-backed surfaces the reverify's connection success is itself evidence: the host won't
   boot on an incomplete capability map.
 
-## The v0.2 surfaces
+## The v0.2 surfaces — why the ladder ends there
 
-- After `map` or `verify` completes → recommend `/vibe-access:visualize`: **render the sheet —
-  see what an agent sees.**
-- When the rendered UNDOCUMENTED count is nonzero → recommend `/vibe-access:describe`.
+- After `map` or `verify` completes, the surface exists but nobody has looked at it. Steps 5-6
+  are the look: `/vibe-access:visualize` renders the sheet — **see what an agent sees.**
+- The rendered UNDOCUMENTED count is the number of affordances still wearing a machine
+  template. Nonzero → `/vibe-access:describe` (ladder step 5).
 - After `describe` runs → re-render and watch the count drop.
 
 Always end with the one recommended command and why. Use AskUserQuestion when the

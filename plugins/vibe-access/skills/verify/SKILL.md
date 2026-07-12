@@ -45,3 +45,9 @@ A held gate is not only HTTP 401/403 — on non-HTTP transports it arrives as
 of the access layer: the affordance is reachable and the gate works. Count it as
 gate-held, never as an error, and never fold a handle-level gate-hold into the same
 bucket as a transport-level one.
+
+## Next step
+
+End the run with one recommendation. If any affordance still carries a machine-template
+description, recommend `/vibe-access:describe` and say the count. Otherwise recommend
+`/vibe-access:visualize`: **render the sheet — see what an agent sees.**

@@ -32,4 +32,7 @@ Load skills/guide/SKILL.md. Requires .vibe-access/state/inventory.json (else rec
      is a POST, so read-only rpcs derive `act`). Overriding to `seed`/`reset`/`capture`
      requires `overrides.tier: "dev"` alongside it — seed/reset/capture can never be
      prod-safe, and the schema refuses it mechanically, override or not.
-5. Recommend `/vibe-access:scaffold` (if gaps) or `/vibe-access:verify` next.
+5. Recommend `/vibe-access:scaffold` (if gaps) or `/vibe-access:verify` next. When there
+   are neither gaps nor unverified rows, hand off to the v0.2 surfaces instead:
+   `/vibe-access:describe` if any affordance still carries a machine-template description,
+   otherwise `/vibe-access:visualize` — render the sheet, see what an agent sees.
