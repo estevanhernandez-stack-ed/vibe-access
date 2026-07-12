@@ -393,3 +393,59 @@ describe('§6.1 bands 6-11 — the audit layer renders its evidence', () => {
     }
   });
 });
+
+// The axes and the verdict tiles exist to point at evidence. An anchor that resolves to nothing
+// is a claim of evidence with no evidence behind it — §6.1 bands 7 and 8 are explicit.
+describe('§6.1 — every anchor resolves to a section in the same document', () => {
+  const anchors = (html) => [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+  const ids = (html) => new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+
+  test.each([
+    ['WSY graded', () => WSY_GRADE_HTML],
+    ['RORO graded', () => RORO_GRADE_HTML],
+    ['MCP graded', () => MCP_GRADE_HTML],
+    ['WSY bare', () => WSY_BARE_HTML],
+  ])('%s has no dead anchors', (_label, get) => {
+    const html = get();
+    const present = ids(html);
+    const dead = [...new Set(anchors(html))].filter((a) => !present.has(a));
+    expect(dead).toEqual([]);
+  });
+
+  test('the axis anchors are real targets, not decoration', () => {
+    for (const a of WSY_G.axes) {
+      expect(WSY_GRADE_HTML).toContain(`id="${a.anchor.slice(1)}"`);
+    }
+  });
+});
+
+// §4, line 104: a shape-2/3/4 payload may carry a resources/prompts sidecar, and when it does
+// the Resources/Prompts axis COUNTS it. Before this, the axis keyed on source alone and the
+// N/A line asserted a fact about the input that the code had never looked at.
+describe('§7.2 axis 4 — the resources/prompts sidecar is actually read', () => {
+  const axis4 = (surface) => surface.axes.find((a) => a.id === 'resources-prompts');
+
+  test('an MCP bundle carrying the sidecar counts resources and prompts', () => {
+    const g = graded({
+      tools: MCP.tools,
+      resources: [{ uri: 'file:///a' }, { uri: 'file:///b' }],
+      prompts: [{ name: 'p1' }],
+    });
+    const a = axis4(g);
+    expect(a.status).toBe('measured');
+    expect(a.measures).toEqual([
+      { name: 'resources declared', value: 2 },
+      { name: 'prompts declared', value: 1 },
+    ]);
+  });
+
+  test('an MCP payload with no sidecar still says the instrument is missing', () => {
+    expect(axis4(MCP_G).status).toBe('na');
+    expect(axis4(MCP_G).naReason).toMatch(/instrument is missing/);
+  });
+
+  test('a manifest still reports candidate resources', () => {
+    expect(axis4(WSY_G).status).toBe('measured');
+    expect(axis4(WSY_G).measures[0].name).toMatch(/candidate resources/);
+  });
+});

@@ -142,7 +142,7 @@ const deferralVerdict = (real) =>
     : 'remote HTTP / Streamable-HTTP is NOT deferred (Claude Code issue #40314, closed "not planned") — one HTTP-MCP gateway of ~120K tokens is 60% of a 200K window, every session, every client.';
 
 export function buildAxes(surface) {
-  const { tools, counts, source, generatedAt, renderedAt, verifyRun } = surface;
+  const { tools, counts, source, generatedAt, renderedAt, verifyRun, sidecar } = surface;
   const n = tools.length;
   const real = tools[0]?.transport.real ?? 'unknown';
 
@@ -175,22 +175,31 @@ export function buildAxes(surface) {
     { name: 'any DECLARED annotation', value: `${counts.withDeclaredAnnotation} of ${n}` },
   ]);
 
-  // 4 — RESOURCES / PROMPTS. No sidecar, no manifest signal → N/A. Zero would be a lie.
-  const resources =
-    source === 'manifest'
-      ? axis('resources-prompts', 'RESOURCES / PROMPTS', '#findings', [
-          {
-            name: 'candidate resources (kind: read + auth: none — read-only addressable state forced through a tool call)',
-            value: tools.filter((t) => t.kind === 'read' && t.consent.mode === 'none').length,
-          },
-        ])
-      : axis(
-          'resources-prompts',
-          'RESOURCES / PROMPTS',
-          '#how-to-read',
-          [],
-          INSTRUMENT_MISSING('the input carries no resources/prompts sidecar, so nothing here can be counted')
-        );
+  // 4 — RESOURCES / PROMPTS. Counted from the §4.1 sidecar when the input carries one; from
+  // the manifest's own read-only affordances when the input is a manifest. Otherwise N/A —
+  // and the N/A now reports a check the code actually ran. Zero would be a lie.
+  let resources;
+  if (source === 'manifest') {
+    resources = axis('resources-prompts', 'RESOURCES / PROMPTS', '#findings', [
+      {
+        name: 'candidate resources (kind: read + auth: none — read-only addressable state forced through a tool call)',
+        value: tools.filter((t) => t.kind === 'read' && t.consent.mode === 'none').length,
+      },
+    ]);
+  } else if (sidecar) {
+    resources = axis('resources-prompts', 'RESOURCES / PROMPTS', '#index', [
+      { name: 'resources declared', value: sidecar.resources },
+      { name: 'prompts declared', value: sidecar.prompts },
+    ]);
+  } else {
+    resources = axis(
+      'resources-prompts',
+      'RESOURCES / PROMPTS',
+      '#how-to-read',
+      [],
+      INSTRUMENT_MISSING('the input carries no resources/prompts sidecar, so nothing here can be counted')
+    );
+  }
 
   // 5 — FRESHNESS. A field that isn't bumped on real activity is worse than no field.
   const probed = n - counts.verify.unverified;

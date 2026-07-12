@@ -20,6 +20,7 @@ export const TOOLVIEW_KEYS = [
 export const SURFACEVIEW_KEYS = [
   'app', 'adapter', 'source', 'noSource', 'generatedAt', 'renderedAt', 'verifyRun',
   'discoveryRoute', 'counts', 'tools', 'findings', 'schemaGaps', 'axes', 'lede',
+  'sidecar',
 ];
 
 // Finding.severity order IS the headline picker order (§4.2, §6.1 band 6).
@@ -645,6 +646,11 @@ export function normalize(json, opts = {}) {
   let generatedAt = null;
   let discoveryRoute = null;
   let validationErrors = [];
+  // §4.1 — shapes 2-4 may carry a {tools, resources, prompts, serverInfo} sidecar bundle. When
+  // the arrays are there, the Resources/Prompts axis COUNTS them (§7.2 axis 4). When they are
+  // not, the axis says the instrument is missing — and now that sentence is a fact the code
+  // actually checked.
+  let sidecar = null;
 
   if (source === 'manifest') {
     validationErrors = validateManifest(json).errors;
@@ -666,6 +672,12 @@ export function normalize(json, opts = {}) {
       shape === 'mcp-array' ? json : shape === 'mcp-envelope' ? json.tools : json.result.tools;
     const bundle = Array.isArray(json) ? {} : json;
     app = bundle.serverInfo?.name ?? null;
+    if (Array.isArray(bundle.resources) || Array.isArray(bundle.prompts)) {
+      sidecar = {
+        resources: Array.isArray(bundle.resources) ? bundle.resources.length : 0,
+        prompts: Array.isArray(bundle.prompts) ? bundle.prompts.length : 0,
+      };
+    }
     adapter = 'mcp';
     const real = realTransport({ declared: null, baseUrl: null, serverInfo: bundle.serverInfo });
     tools = raw.map((t) => {
@@ -730,6 +742,7 @@ export function normalize(json, opts = {}) {
     renderedAt,
     verifyRun,
     discoveryRoute,
+    sidecar,
     counts,
     tools,
     findings,
@@ -1309,7 +1322,7 @@ function masthead(surface, opts) {
       ? '<p class="banner risk">The verify run predates the manifest — these proofs are older than the surface they claim to prove.</p>'
       : '';
   return [
-    '<header class="band" data-band="masthead">',
+    '<header class="band" data-band="masthead" id="masthead">',
     `<h1>${esc(surface.app ?? 'agent surface')}</h1>`,
     `<p class="sub">${esc(surface.adapter ?? 'unknown adapter')} · ${esc(surface.source)} · ${esc(real)}</p>`,
     banner,
@@ -1361,7 +1374,7 @@ function indexBand(surface, opts = {}) {
   // and :describe does not run against a server someone else owns.
   if (surface.source === 'mcp') {
     return [
-      '<section class="band" data-band="index">',
+      '<section class="band" data-band="index" id="index">',
       '<h2>TOOL INDEX</h2>',
       `<p class="quiet absence-note">${undocumented} of ${n} descriptions are absent or under ${MIN_DESCRIPTION_CHARS} characters — a label, not a purpose · ` +
         `${withDeclaredInputSchema} of ${n} declare an input schema. Stated once here — each card marks its own hole in one line, not a wall.</p>`,
@@ -1381,7 +1394,7 @@ function indexBand(surface, opts = {}) {
     `${withDeclaredInputSchema} of ${n} declare an input schema${minedClause}. Stated once here — each card marks its ` +
     `own hole in one line, not a wall.${todo}</p>`;
   return [
-    '<section class="band" data-band="index">',
+    '<section class="band" data-band="index" id="index">',
     '<h2>TOOL INDEX</h2>',
     note,
     filterControls(surface),
@@ -1577,11 +1590,18 @@ function reportCardBand(surface) {
           : `<ul class="measures">${a.measures
               .map((m) => `<li><span class="m-k">${esc(m.name)}</span><span class="m-v">${esc(String(m.value))}</span></li>`)
               .join('')}</ul>`;
-      return `<div class="axis" id="${escAttr(a.id)}"><h3><a href="${escAttr(a.anchor)}">${esc(a.label)}</a></h3>${body}</div>`;
+      // An anchor into a band that did not render is a claim of evidence with no evidence
+      // behind it. SCHEMA GAPS is the one conditional band — when it is absent, the axis
+      // heading stays plain text rather than linking to air.
+      const live = !(a.anchor === '#schema-gaps' && surface.schemaGaps.length === 0);
+      const head = live
+        ? `<a href="${escAttr(a.anchor)}">${esc(a.label)}</a>`
+        : esc(a.label);
+      return `<div class="axis" id="${escAttr(a.id)}"><h3>${head}</h3>${body}</div>`;
     })
     .join('');
   return [
-    '<section class="band" data-band="report-card">',
+    '<section class="band" data-band="report-card" id="report-card">',
     '<h2>SURFACE REPORT CARD</h2>',
     '<p class="quiet">These grade the SURFACE — the manifest as documentation for an agent reader — not the app. Six measured rows: the counts that would have driven a score, printed as-is. No 0-100 number, no composite letter; v0.2 has no formula that would earn one.</p>',
     `<div class="axes">${rows}</div>`,
@@ -1595,10 +1615,10 @@ function reportCardBand(surface) {
 // normalizer: one dead subsystem is ONE card, not seven dots.
 function findingsBand(surface) {
   if (surface.findings.length === 0) {
-    return '<section class="band" data-band="findings"><h2>FINDINGS</h2><p class="quiet">No breach, no unclaimed destruction, no tier contradiction on this surface.</p></section>';
+    return '<section class="band" data-band="findings" id="findings"><h2>FINDINGS</h2><p class="quiet">No breach, no unclaimed destruction, no tier contradiction on this surface.</p></section>';
   }
   return [
-    '<section class="band" data-band="findings">',
+    '<section class="band" data-band="findings" id="findings">',
     '<h2>FINDINGS</h2>',
     surface.findings.map(findingCard).join(''),
     '</section>',
@@ -1636,7 +1656,7 @@ function barBand(surface) {
     })
     .join('');
   return [
-    '<section class="band" data-band="the-bar">',
+    '<section class="band" data-band="the-bar" id="the-bar">',
     '<h2>THE BAR</h2>',
     `<p class="quiet">${esc(note)} The literature says ~97% of tools carry at least one description defect and 56% have unclear purpose (arXiv 2602.14878, 856 tools / 103 servers).</p>`,
     `<div class="bar">${cards}</div>`,
@@ -1659,7 +1679,7 @@ function schemaGapsBand(surface) {
 function howToReadBand(surface) {
   const groupNote = `Grouping: the section bands are the app's own shape, derived from the surface — not an axis anyone typed.`;
   return [
-    '<section class="band" data-band="how-to-read">',
+    '<section class="band" data-band="how-to-read" id="how-to-read">',
     '<h2>HOW TO READ THIS</h2>',
     '<dl>',
     '<dt>"Pass" means two different things.</dt>',
