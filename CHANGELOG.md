@@ -35,7 +35,22 @@ add a v0.2 field to `agent-access.json`, that app is on v0.2 for good.
   self-contained HTML page, from a manifest or a live MCP `tools/list` payload. Verify
   math renders the full class decomposition (ran / gate-held / handle-gate-held / open /
   error / unverified); tool count is never graded.
-- **`describe`** — grades the descriptions an agent has to choose from.
+- **`describe`** — the documentation pass. Reads the handler source behind every
+  affordance whose description is still a machine template, authors a real description
+  against the D1–D7 axes (purpose beyond the route, when to use, when NOT to use, inputs
+  in prose, result shape, side effects, consent in words), and writes it into
+  `overrides.description` — the re-map-safe home. Batch cadence: propose per group,
+  builder approves, write, re-render. Nothing lands unreviewed; these strings are the
+  consent surface an agent reader trusts.
+- **`inputShape`** (inventory, optional) — scan now mines the input shape out of the
+  handler: `req.body` destructuring, direct and bracket reads, `req.query` / `req.params`,
+  and — highest confidence — zod/joi schema objects. `map` writes it into the affordance's
+  existing `input` field, and THE CALL fills from it: query params in the URL, body params
+  in `-d`, every property named. Nothing is invented — a handler that reads no input yields
+  no shape, types stay `unknown` unless the source states them, requiredness is only claimed
+  when a validator states it, and every mined table is tagged `mined from <sourceRef>`.
+  Mined is not declared, and a declared schema always beats a mined one. Additive and
+  optional: a shape-free inventory still validates.
 
 ### Changed
 
