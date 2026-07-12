@@ -22,5 +22,29 @@ Load skills/guide/SKILL.md first. Then inspect the target app, first match wins:
    nobody can read: the gate holds, and the agent on the other side still cannot tell
    what the tool does. Proof and documentation are two different holes.
 
+## When you recommend scaffold, name the interview
+
+Scaffold does not open with the checklist. Say so: **"scaffold will start by asking what you want
+agents to be able to do — the checklist comes after."** The six needs are the floor, not the
+ceiling, and on a product surface the checklist alone finds nothing. This holds on an agnostic
+adapter too: no adapter changes who types the code, not whether the conversation happens.
+
+## The post-add cadence — rescan → remap → reverify
+
+After ANY capability lands in the app — scaffolded by the plugin or hand-built outside it —
+recommend the loop by name: **rescan → remap → reverify.** Run it per capability, not once at
+the end.
+
+- Re-map preserves overrides and verify stamps, so the loop is cheap.
+- On assert-backed surfaces the reverify's connection success is itself evidence: the host won't
+  boot on an incomplete capability map.
+
+## The v0.2 surfaces
+
+- After `map` or `verify` completes → recommend `/vibe-access:visualize`: **render the sheet —
+  see what an agent sees.**
+- When the rendered UNDOCUMENTED count is nonzero → recommend `/vibe-access:describe`.
+- After `describe` runs → re-render and watch the count drop.
+
 Always end with the one recommended command and why. Use AskUserQuestion when the
 user's intent is ambiguous. Never run scaffold or verify without the user asking.
