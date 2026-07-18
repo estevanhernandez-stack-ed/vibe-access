@@ -1,0 +1,7 @@
+{
+  "sidebar_modes": [
+    { "name": "Alpha Mode", "requires_cache": false },
+    { "name": "Beta Mode", "requires_cache": true },
+    { "name": "Ghost Mode", "requires_cache": false }
+  ]
+}

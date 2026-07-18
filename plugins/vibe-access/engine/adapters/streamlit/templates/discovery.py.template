@@ -1,0 +1,21 @@
+"""__DESCRIPTION__
+
+vibe-access:dev-gate — served only by the dev sidecar (access_api.py refuses
+to boot without VIBE_ACCESS_DEV=1; bind 127.0.0.1 only).
+"""
+# vibe-access:route method=GET path=/access/manifest
+# kind: discovery · id: __ID__
+import json
+from pathlib import Path
+
+
+def run(payload=None):
+    """Serve agent-access.json from the app root, verbatim."""
+    manifest_path = Path(__file__).resolve().parents[2] / "agent-access.json"
+    return json.loads(manifest_path.read_text(encoding="utf-8"))
+
+
+def register(app):
+    @app.get("/access/manifest")
+    def agent_manifest():
+        return run()

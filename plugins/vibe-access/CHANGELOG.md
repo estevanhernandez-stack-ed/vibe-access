@@ -6,6 +6,44 @@ All notable changes to vibe-access are documented here. Format follows
 
 The plugin ships from `plugins/vibe-access/` and carries a copy of this file.
 
+## [0.3.0] — 2026-07-17
+
+Second implemented adapter: **streamlit**. Fixture-driven against PriceScout
+(Streamlit/Python, 9-mode sidebar, dormant React experiment in `frontend/`).
+Every manifest and inventory written by v0.2 stays valid — no schema field
+changed shape; `sidecarPort` is optional and `schemaVersion` stays `1`.
+
+### Added
+
+- **Python probe in `detect`** — `requirements.txt` / `pyproject.toml` scan for a
+  streamlit dependency plus entry-script location (prefers the file calling
+  `st.set_page_config`; scans app root, `app/`, `src/` one level deep). New
+  detection fields `requirementsPath`, `pyprojectPath`, `streamlitEntry` (null
+  when absent). Precedence: firebase's early return still wins when both
+  coexist; streamlit outranks the JS-deps walk, so a Python app with a dormant
+  `frontend/package.json` resolves `streamlit`, not `unknown`.
+- **`adapters/streamlit/`** — the second implemented adapter. Streamlit has no
+  HTTP routes, so `routes` carries only scaffolded sidecar endpoints (parsed
+  from the `vibe-access:route` marker in `access_sidecar/affordances/*.py`),
+  and every UI surface — sidebar modes resolved from `ui_config.json` + the
+  entry's dispatch table, native `pages/*.py` — lands in `unmapped` as a
+  first-class finding naming the handler and the fix (scaffold a sidecar
+  affordance). Config/dispatch drift (configured mode without a dispatch arm,
+  arm without a config entry) is called out distinctly.
+- **Sidecar scaffold** — plans emit a dev-gated FastAPI sidecar
+  (`access_sidecar/`) that imports the host app's own logic. Boot-refuses
+  without `VIBE_ACCESS_DEV=1`, binds `127.0.0.1` only, `vibe-access:dev-gate`
+  marker in every file, `GET /access/` discovery index, `GET /access/manifest`
+  serving `agent-access.json`. Plans are additive-only: `patches` is always
+  empty; dependency changes (fastapi, uvicorn) are note-only.
+- **`sidecarPort`** — optional config field (1024–65535, default 8765) carried
+  into the scaffold's run command and API template.
+- Fixtures `app-streamlit` (sidebar-dispatch shape + deliberate Ghost Mode
+  drift + dormant `frontend/package.json`), `app-streamlit-pages` (native
+  multipage), `app-firebase-streamlit` (precedence), and a 13-test suite
+  covering the detect truth table, unmapped honesty, scaffold gating, and the
+  applied-plan round-trip.
+
 ## [0.2.0] — 2026-07-11
 
 **Compatibility is one-way. Read this before you update.** Every manifest written by
