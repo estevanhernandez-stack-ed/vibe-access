@@ -1,8 +1,9 @@
 import { nextjsStub } from './_stubs/nextjs.mjs';
 import { expressStub } from './_stubs/express.mjs';
 import { firebaseFunctionsAdapter } from './firebase-functions/index.mjs';
+import { streamlitAdapter } from './streamlit/index.mjs';
 
-export const IMPLEMENTED_ADAPTERS = [firebaseFunctionsAdapter];
+export const IMPLEMENTED_ADAPTERS = [firebaseFunctionsAdapter, streamlitAdapter];
 const STUB_ADAPTERS = [nextjsStub, expressStub];
 
 export const REGISTERED_ADAPTERS = [...IMPLEMENTED_ADAPTERS, ...STUB_ADAPTERS];

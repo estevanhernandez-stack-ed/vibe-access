@@ -1,0 +1,41 @@
+"""vibe-access sidecar for __APP_NAME__ — the agent-facing callable surface.
+
+Streamlit itself exposes no HTTP routes an agent can call; this sidecar
+imports the app's own logic and serves it as endpoints. Everything here is
+dev-tier by construction:
+
+vibe-access:dev-gate — refuses to boot unless VIBE_ACCESS_DEV=1.
+Run: VIBE_ACCESS_DEV=1 uvicorn access_sidecar.access_api:app --host 127.0.0.1 --port __PORT__
+Bind 127.0.0.1 only. Prod deployment of this sidecar is out of scope.
+"""
+import importlib
+import os
+import pkgutil
+
+if os.environ.get("VIBE_ACCESS_DEV") != "1":
+    raise SystemExit(
+        "vibe-access sidecar: refusing to boot — set VIBE_ACCESS_DEV=1 (dev gate)"
+    )
+
+from fastapi import FastAPI
+
+app = FastAPI(title="vibe-access sidecar: __APP_NAME__")
+
+from . import affordances as _affordances_pkg
+
+for _mod_info in pkgutil.iter_modules(_affordances_pkg.__path__):
+    _mod = importlib.import_module(f"{_affordances_pkg.__name__}.{_mod_info.name}")
+    if hasattr(_mod, "register"):
+        _mod.register(app)
+
+
+@app.get("/access/")
+def discovery_index():
+    """List every registered affordance path with its methods."""
+    out = []
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        if path.startswith("/access/") and path != "/access/":
+            methods = sorted(set(getattr(route, "methods", set())) - {"HEAD", "OPTIONS"})
+            out.append({"path": path, "methods": methods})
+    return {"app": "__APP_NAME__", "affordances": out}

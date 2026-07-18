@@ -1,0 +1,23 @@
+"""__DESCRIPTION__
+
+vibe-access:dev-gate — served only by the dev sidecar (access_api.py refuses
+to boot without VIBE_ACCESS_DEV=1; bind 127.0.0.1 only).
+"""
+# vibe-access:route method=__METHOD__ path=__PATH__
+# kind: __KIND__ · id: __ID__
+
+
+def run(payload):
+    """TODO: import the app function this affordance exposes and call it.
+
+    Example:
+        from app.compliance.posting_check import run_check
+        return run_check(payload["from_date"], payload["to_date"])
+    """
+    raise NotImplementedError("wire __ID__ to the app function it exposes")
+
+
+def register(app):
+    @app.api_route("__PATH__", methods=["__METHOD__"])
+    async def __FUNC_NAME__(payload: dict | None = None):
+        return run(payload or {})

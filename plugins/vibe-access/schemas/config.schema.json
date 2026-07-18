@@ -15,6 +15,7 @@
       "properties": { "dev": { "type": "string" }, "prod": { "type": "string" } }
     },
     "devRunCommand": { "type": "string" },
+    "sidecarPort": { "type": "integer", "minimum": 1024, "maximum": 65535 },
     "discoveryRoute": { "type": ["string", "null"] },
     "authModelNote": { "type": "string" },
     "capturedAt": { "type": "string" }

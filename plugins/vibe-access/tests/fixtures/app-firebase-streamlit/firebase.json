@@ -1,0 +1,4 @@
+{
+  "hosting": { "rewrites": [] },
+  "functions": { "source": "functions" }
+}
