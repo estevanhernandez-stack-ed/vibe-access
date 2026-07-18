@@ -82,7 +82,9 @@ function sidecarRoutes(appRoot, routes, unmapped) {
   if (!existsSync(affDir)) return;
   let names;
   try {
-    names = readdirSync(affDir).filter((n) => n.endsWith('.py') && n !== '__init__.py');
+    // Underscore-prefixed modules are helpers by Python convention (_app.py
+    // bootstrap, __init__.py) — not affordances, not worth an unmapped flag.
+    names = readdirSync(affDir).filter((n) => n.endsWith('.py') && !n.startsWith('_'));
   } catch {
     return;
   }
@@ -93,7 +95,10 @@ function sidecarRoutes(appRoot, routes, unmapped) {
     const ref = relative(appRoot, p);
     if (m) {
       routes.push({
-        name: basename(n, '.py'),
+        // Python module names are snake_case; manifest ids allow [a-z0-9.-]
+        // only, and map derives id from name — kebab-ize here so agent_seed.py
+        // becomes the agent-seed affordance, matching the gaps candidates.
+        name: basename(n, '.py').replace(/_/g, '-'),
         method: m[1],
         path: m[2],
         sourceRef: ref,

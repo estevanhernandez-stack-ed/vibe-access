@@ -18,6 +18,9 @@ def run(payload):
 
 
 def register(app):
+    # Sync handler on purpose: FastAPI runs it in a threadpool, so wired app
+    # logic may block and may call asyncio.run() (an async handler would die
+    # with "cannot be called from a running event loop").
     @app.api_route("__PATH__", methods=["__METHOD__"])
-    async def __FUNC_NAME__(payload: dict | None = None):
+    def __FUNC_NAME__(payload: dict | None = None):
         return run(payload or {})
